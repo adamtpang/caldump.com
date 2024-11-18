@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Task to Calendar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Task to Calendar</h2>
+
+    <div class="settings">
+      <h3>Settings</h3>
+      <div class="setting-item">
+        <label>Start Time:</label>
+        <input type="time" id="startTime" value="06:00">
+      </div>
+      <div class="setting-item">
+        <label>End Time:</label>
+        <input type="time" id="endTime" value="19:00">
+      </div>
+      <button id="saveSettings">Save Settings</button>
+    </div>
+
+    <div class="task-input">
+      <h3>Add Task</h3>
+      <button id="pasteTask">Paste from Clipboard</button>
+      <textarea id="taskText" placeholder="Or type your task here..."></textarea>
+      <button id="addTask">Add to Calendar</button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
