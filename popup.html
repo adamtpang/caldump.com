@@ -1,35 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Task to Calendar</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>caldump.com</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <h2>Task to Calendar</h2>
+  <header>
+    <a href="https://caldump.com" target="_blank" class="brand-link">caldump.com</a>
+  </header>
 
-    <div class="settings">
-      <h3>Settings</h3>
-      <div class="setting-item">
-        <label>Start Time:</label>
-        <input type="time" id="startTime" value="06:00">
+  <!-- Google Account Section -->
+  <div id="googleAccount" class="google-account">
+    <div id="signInPrompt">
+      <p>Continue with the Google account of the calendar you want to use:</p>
+      <button id="signInButton" class="google-button">
+        <img src="icons/google.svg" alt="Google" class="google-icon">
+        <span class="button-text">Continue with Google</span>
+        <div class="spinner hidden"></div>
+      </button>
+    </div>
+    <div id="accountInfo" class="hidden">
+      <p>Connected to:</p>
+      <div class="account-details">
+        <span id="userEmail"></span>
+        <button id="switchAccount" class="switch-account-button">
+          Switch Account
+        </button>
       </div>
-      <div class="setting-item">
-        <label>End Time:</label>
-        <input type="time" id="endTime" value="19:00">
+    </div>
+  </div>
+
+  <!-- License required message -->
+  <div id="licenseRequired" class="hidden">
+    <h2>License Required</h2>
+    <div class="warning-message">
+      <p><strong>Important:</strong> When purchasing, use your connected Gmail address as the contact email.</p>
+    </div>
+    <div class="license-info hidden">
+      <p>License purchased with: <span id="purchaseEmail" class="email-highlight"></span></p>
+    </div>
+    <div class="stripe-container">
+      <a href="https://buy.stripe.com/eVa4j3dDd7AC18c9AD"
+         class="stripe-button"
+         target="_blank"
+         rel="noopener noreferrer">
+        Purchase License
+      </a>
+    </div>
+  </div>
+
+  <!-- Main app content (shown when licensed) -->
+  <div id="mainContent" class="main-content hidden">
+    <div class="settings-container">
+      <button id="toggleSettings" class="toggle-settings">
+        <span class="material-icons">settings</span>
+        <span>default schedule times</span>
+      </button>
+      <div id="settingsPanel" class="settings-panel hidden">
+        <div class="time-inputs">
+          <label>
+            Start Time:
+            <input type="time" id="startTime">
+          </label>
+          <label>
+            End Time:
+            <input type="time" id="endTime">
+          </label>
+        </div>
+        <button id="saveSettings">Save Settings</button>
       </div>
-      <button id="saveSettings">Save Settings</button>
     </div>
 
-    <div class="task-input">
-      <h3>Add Task</h3>
-      <button id="pasteTask">Paste from Clipboard</button>
-      <textarea id="taskText" placeholder="Or type your task here..."></textarea>
-      <button id="addTask">Add to Calendar</button>
+    <textarea id="taskText" placeholder="Enter your calendar events..."></textarea>
+    <div class="button-group">
+      <button id="addTask">
+        <span class="button-text">Add to Calendar</span>
+        <div class="spinner hidden"></div>
+      </button>
+      <button id="cancelScheduling" class="cancel-button hidden">
+        Cancel
+      </button>
     </div>
-
     <div id="status" class="status"></div>
   </div>
+
+  <div class="calendar-links">
+    <a href="https://calendar.google.com" target="_blank">Google Calendar</a>
+    <a href="https://calendar.notion.so" target="_blank">Notion Calendar</a>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

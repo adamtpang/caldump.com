@@ -1,0 +1,87 @@
+    <script>
+      // Get session ID and customer email from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
+      const customerEmail = urlParams.get('customer_email');
+
+      // Extension IDs
+      const EXTENSION_IDS = {
+        development: 'hpjjkpbpnmnpfncfbondglbefadklfeb',
+        production: 'ociinpogekbfnofjgobkjcpbpldlfken'
+      };
+
+      function showStatus(message, type) {
+        const status = document.getElementById('status');
+        status.innerHTML = message;
+        status.className = `status ${type}`;
+      }
+
+      async function tryConnectToExtension(extensionId) {
+        console.log('Attempting to connect to extension:', extensionId);
+
+        return new Promise((resolve) => {
+          // Create a custom event for extension to listen to
+          const event = new CustomEvent('caldump_license_activation', {
+            detail: {
+              sessionId: sessionId,
+              customerEmail: customerEmail,
+              timestamp: Date.now()
+            }
+          });
+
+          // Listen for response from extension
+          function handleResponse(e) {
+            if (e.detail && e.detail.source === extensionId) {
+              document.removeEventListener('caldump_license_response', handleResponse);
+              resolve({ success: e.detail.success, extensionId });
+            }
+          }
+
+          document.addEventListener('caldump_license_response', handleResponse);
+
+          // Dispatch event
+          document.dispatchEvent(event);
+
+          // Set timeout
+          setTimeout(() => {
+            document.removeEventListener('caldump_license_response', handleResponse);
+            resolve({ success: false });
+          }, 5000);
+        });
+      }
+
+      async function activateLicense() {
+        if (!sessionId || !customerEmail) {
+          showStatus('Error: Missing session information', 'error');
+          return;
+        }
+
+        try {
+          // Try development extension first
+          console.log('Trying development extension...');
+          let result = await tryConnectToExtension(EXTENSION_IDS.development);
+
+          // If dev fails, try production
+          if (!result.success) {
+            console.log('Development failed, trying production...');
+            result = await tryConnectToExtension(EXTENSION_IDS.production);
+          }
+
+          if (result.success) {
+            showStatus('License activated successfully! You can now close this window.', 'success');
+            // After 2 seconds, redirect back to the extension
+            setTimeout(() => {
+              window.location.href = `chrome-extension://${result.extensionId}/popup.html`;
+            }, 2000);
+          } else {
+            showStatus('Failed to activate license. Please ensure the extension is installed and try reopening it.', 'error');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showStatus('Failed to communicate with extension. Please ensure the extension is installed.', 'error');
+        }
+      }
+
+      // Start activation when page loads
+      document.addEventListener('DOMContentLoaded', activateLicense);
+    </script>
