@@ -1,36 +1,11 @@
 import axios from 'axios';
 
-// Debug environment variables
-console.log('Environment variables:', {
-  NODE_ENV: import.meta.env.NODE_ENV,
-  MODE: import.meta.env.MODE,
-  VITE_API_URL: import.meta.env.VITE_API_URL,
-  BASE_URL: import.meta.env.BASE_URL,
-});
+const isDevelopment = window.location.hostname === 'localhost';
+const apiUrl = isDevelopment
+  ? 'http://localhost:5000'
+  : 'https://caldumpcom-production.up.railway.app';
 
-// Determine the API URL with fallbacks
-const determineApiUrl = () => {
-  const productionUrl = 'https://caldumpcom-production.up.railway.app';
-  const developmentUrl = 'http://localhost:5000';
-
-  // Always use production URL in production mode
-  if (import.meta.env.MODE === 'production') {
-    console.log('Using production URL:', productionUrl);
-    return productionUrl;
-  }
-
-  // In development, use environment variable if available
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl) {
-    console.log('Using API URL from environment:', envApiUrl);
-    return envApiUrl;
-  }
-
-  console.log('Using development fallback URL:', developmentUrl);
-  return developmentUrl;
-};
-
-const apiUrl = determineApiUrl();
+console.log('Using API URL:', apiUrl, 'isDevelopment:', isDevelopment);
 
 const axiosInstance = axios.create({
   baseURL: apiUrl,
@@ -42,13 +17,7 @@ const axiosInstance = axios.create({
 // Add a request interceptor to add the auth token
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // Debug log for each request
-    console.log('Making request to:', config.baseURL + config.url, {
-      method: config.method,
-      params: config.params,
-      headers: config.headers,
-      mode: import.meta.env.MODE,
-    });
+    console.log('Making request to:', config.baseURL + config.url);
 
     const token = localStorage.getItem('caldump_token');
     if (token) {
@@ -78,8 +47,7 @@ axiosInstance.interceptors.response.use(
       status: error.response?.status,
       data: error.response?.data,
       url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      mode: import.meta.env.MODE
+      baseURL: error.config?.baseURL
     });
     return Promise.reject(error);
   }

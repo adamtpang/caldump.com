@@ -37,6 +37,7 @@ export function AuthProvider({ children }) {
           setHasPurchased(response.data.hasPurchased);
         } catch (error) {
           console.error('Error checking purchase status:', error);
+          setHasPurchased(false);
         }
       } else {
         setHasPurchased(false);
@@ -58,6 +59,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    setHasPurchased(false);
     return signOut(auth);
   };
 
