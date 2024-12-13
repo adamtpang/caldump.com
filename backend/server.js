@@ -215,7 +215,16 @@ const startServer = async () => {
   try {
     await connectDB();
 
+    // Railway provides PORT environment variable
     const PORT = process.env.PORT || 8080;
+
+    // Log environment details
+    console.log('\n=== Environment Details ===');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('PORT:', PORT);
+    console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not Set');
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n=== Server Started ===`);
       console.log(`Time: ${new Date().toISOString()}`);

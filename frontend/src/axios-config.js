@@ -13,10 +13,21 @@ const getBaseURL = () => {
 
   // For development
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8080';
+    return 'http://localhost:8080'; // Use port 8080 for local development
   }
 
-  // For production
+  // For production domains
+  if (hostname === 'caldump.com' || hostname === 'www.caldump.com') {
+    return 'https://caldumpcom-production.up.railway.app';
+  }
+
+  // For preview deployments
+  if (hostname.includes('vercel.app')) {
+    return 'https://caldumpcom-production.up.railway.app';
+  }
+
+  // Default to production API
+  console.warn('Unknown hostname, defaulting to production API:', hostname);
   return 'https://caldumpcom-production.up.railway.app';
 };
 
