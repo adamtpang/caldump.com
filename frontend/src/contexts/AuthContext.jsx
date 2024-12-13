@@ -37,19 +37,11 @@ export function AuthProvider({ children }) {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [error, setError] = useState(null);
 
-  // Clear any cached data on mount
-  useEffect(() => {
-    localStorage.removeItem('caldump_token');
-    setHasPurchased(false);
-    setError(null);
-  }, []);
-
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
         try {
-          // Get fresh ID token
           const token = await user.getIdToken(true);
           localStorage.setItem('caldump_token', token);
 
@@ -57,9 +49,9 @@ export function AuthProvider({ children }) {
           setHasPurchased(purchased);
           setError(null);
         } catch (error) {
-          console.error('Error checking purchase status:', error);
+          console.error('Auth state change error:', error);
           setHasPurchased(false);
-          setError('Failed to verify purchase status. Please try refreshing the page.');
+          setError('Failed to verify purchase status');
         }
       } else {
         localStorage.removeItem('caldump_token');
@@ -78,9 +70,11 @@ export function AuthProvider({ children }) {
   const login = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
+      const purchased = await checkPurchaseStatus(result.user.email);
+      setHasPurchased(purchased);
       return result.user;
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      console.error('Login error:', error);
       throw error;
     }
   };
@@ -92,7 +86,7 @@ export function AuthProvider({ children }) {
       setHasPurchased(false);
       setError(null);
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Logout error:', error);
       throw error;
     }
   };
