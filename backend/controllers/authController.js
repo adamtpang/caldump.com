@@ -34,21 +34,38 @@ exports.verifyToken = async (req, res) => {
     // Verify the Firebase ID token
     const decodedToken = await admin.auth().verifyIdToken(token);
 
-    // Find or create user
+    // Get the user's Firebase profile to ensure we have complete data
+    const userRecord = await admin.auth().getUser(decodedToken.uid);
+
+    // Find or create user with correct googleId (Firebase UID)
     let user = await User.findOne({ googleId: decodedToken.uid });
 
     if (!user) {
-      // Get the user's Firebase profile
-      const userRecord = await admin.auth().getUser(decodedToken.uid);
-
-      // Create new user
+      // Create new user with Firebase UID as googleId
       user = await User.create({
         email: userRecord.email,
-        googleId: userRecord.uid,
-        displayName: userRecord.displayName,
+        googleId: decodedToken.uid, // Using Firebase UID, not email
+        displayName: userRecord.displayName || userRecord.email,
         photoURL: userRecord.photoURL,
+        settings: {
+          startTime: '09:00',
+          endTime: '17:00'
+        }
       });
+    } else {
+      // Update existing user's information if needed
+      user.email = userRecord.email;
+      user.displayName = userRecord.displayName || userRecord.email;
+      user.photoURL = userRecord.photoURL;
+      await user.save();
     }
+
+    // Log successful authentication
+    console.log('User authenticated:', {
+      email: user.email,
+      googleId: user.googleId,
+      hasLicense: user.license?.isActive
+    });
 
     res.json({
       user: {
@@ -62,7 +79,10 @@ exports.verifyToken = async (req, res) => {
     });
   } catch (error) {
     console.error('Auth error:', error);
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({
+      error: 'Invalid token',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
