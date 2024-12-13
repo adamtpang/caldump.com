@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import axiosInstance from '../axios-config';
 
 const AuthContext = createContext();
 
@@ -22,27 +23,29 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
-  const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
         try {
-          const response = await fetch(`${apiUrl}/api/purchases/check-purchase?email=${encodeURIComponent(user.email)}`);
-          if (response.ok) {
-            const data = await response.json();
-            setHasPurchased(data.hasPurchased);
-          }
+          console.log('Checking purchase status for:', user.email);
+          const response = await axiosInstance.get('/api/purchases/check-purchase', {
+            params: { email: user.email }
+          });
+          console.log('Purchase status response:', response.data);
+          setHasPurchased(response.data.hasPurchased);
         } catch (error) {
-          console.error('Error checking license:', error);
+          console.error('Error checking purchase status:', error);
         }
+      } else {
+        setHasPurchased(false);
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [apiUrl]);
+  }, []);
 
   const login = async () => {
     try {
