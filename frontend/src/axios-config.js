@@ -1,23 +1,26 @@
 import axios from 'axios';
 
-// Always use production URL for caldump.com domain
+// API URLs
 const PRODUCTION_URL = 'https://caldumpcom-production.up.railway.app';
 const DEVELOPMENT_URL = 'http://localhost:5000';
 
-// Check if we're on the production domain
-const isProduction = window.location.href.includes('caldump.com');
-const baseURL = isProduction ? PRODUCTION_URL : DEVELOPMENT_URL;
+// More robust production check
+const isProduction = () => {
+  const hostname = window.location.hostname;
+  return hostname === 'caldump.com' ||
+         hostname === 'www.caldump.com' ||
+         hostname.includes('vercel.app');
+};
 
-console.log('Current URL:', window.location.href);
-console.log('Using API URL:', baseURL, 'isProduction:', isProduction);
+const baseURL = isProduction() ? PRODUCTION_URL : DEVELOPMENT_URL;
+
+console.log('Current hostname:', window.location.hostname);
+console.log('Using API URL:', baseURL, 'isProduction:', isProduction());
 
 const axiosInstance = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
-  },
-  // Ensure we don't use any cached responses
-  headers: {
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     'Expires': '0',
