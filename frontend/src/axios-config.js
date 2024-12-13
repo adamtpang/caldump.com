@@ -1,16 +1,37 @@
 import axios from 'axios';
 
-const apiUrl = import.meta.env.VITE_API_URL;
+// Debug environment variables
+console.log('Environment variables:', {
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE,
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  BASE_URL: import.meta.env.BASE_URL,
+});
 
-// Debug log to check the API URL
-console.log('API URL from env:', apiUrl);
+// Determine the API URL with fallbacks
+const determineApiUrl = () => {
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  const productionUrl = 'https://caldumpcom-production.up.railway.app';
+  const developmentUrl = 'http://localhost:5000';
 
-if (!apiUrl) {
-  console.warn('No API URL found in environment variables!');
-}
+  if (envApiUrl) {
+    console.log('Using API URL from environment:', envApiUrl);
+    return envApiUrl;
+  }
+
+  if (import.meta.env.MODE === 'production') {
+    console.log('Using production fallback URL:', productionUrl);
+    return productionUrl;
+  }
+
+  console.log('Using development fallback URL:', developmentUrl);
+  return developmentUrl;
+};
+
+const apiUrl = determineApiUrl();
 
 const axiosInstance = axios.create({
-  baseURL: apiUrl || 'https://caldumpcom-production.up.railway.app', // Fallback URL
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -23,7 +44,8 @@ axiosInstance.interceptors.request.use(
     console.log('Making request to:', config.baseURL + config.url, {
       method: config.method,
       params: config.params,
-      headers: config.headers
+      headers: config.headers,
+      mode: import.meta.env.MODE,
     });
 
     const token = localStorage.getItem('caldump_token');
@@ -53,7 +75,9 @@ axiosInstance.interceptors.response.use(
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
-      url: error.config?.url
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      mode: import.meta.env.MODE
     });
     return Promise.reject(error);
   }
