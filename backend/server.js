@@ -17,11 +17,12 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+
+// Special handling for Stripe webhook route
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), require('./controllers/stripeController').webhook);
+
+// Regular JSON parsing for all other routes
+app.use(express.json());
 
 // Add security headers
 app.use((req, res, next) => {
@@ -31,21 +32,21 @@ app.use((req, res, next) => {
 });
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/purchases', require('./routes/purchases'));
 
-// Stripe webhook route (needs raw body)
-app.post('/api/stripe/webhook', require('./controllers/stripeController').webhook);
-
 const PORT = process.env.PORT || 8080;
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
