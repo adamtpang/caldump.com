@@ -1,46 +1,32 @@
 import axios from 'axios';
 
-// API URLs
-const PRODUCTION_URL = 'https://caldumpcom-production.up.railway.app';
-const DEVELOPMENT_URL = 'http://localhost:5000';
-
-// More robust production check
-const isProduction = () => {
-  const hostname = window.location.hostname;
-  return hostname === 'caldump.com' ||
-         hostname === 'www.caldump.com' ||
-         hostname.includes('vercel.app');
-};
-
-const baseURL = isProduction() ? PRODUCTION_URL : DEVELOPMENT_URL;
-
-console.log('Current hostname:', window.location.hostname);
-console.log('Using API URL:', baseURL, 'isProduction:', isProduction());
-
+// Create axios instance with base configuration
 const axiosInstance = axios.create({
-  baseURL,
+  // Use Railway URL directly
+  baseURL: 'https://caldumpcom-production.up.railway.app',
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Expires': '0',
+    'Pragma': 'no-cache'
   }
 });
 
-// Add a request interceptor to add the auth token
+// Add request interceptor for auth token
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // Force reload by adding timestamp
+    // Add timestamp to prevent caching
     const timestamp = new Date().getTime();
     const separator = config.url.includes('?') ? '&' : '?';
     config.url = `${config.url}${separator}_t=${timestamp}`;
 
-    console.log('Making request to:', config.baseURL + config.url);
-
+    // Add auth token if available
     const token = localStorage.getItem('caldump_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    console.log('Making request to:', config.url);
     return config;
   },
   (error) => {
@@ -53,18 +39,21 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => {
     console.log('Response received:', {
+      url: response.config.url,
+      method: response.config.method,
       status: response.status,
-      data: response.data,
-      url: response.config.url
+      data: response.data
     });
     return response;
   },
   (error) => {
+    // Detailed error logging
     console.error('API Error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
       url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data,
       baseURL: error.config?.baseURL
     });
     return Promise.reject(error);
