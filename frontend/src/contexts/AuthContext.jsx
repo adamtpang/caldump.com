@@ -1,46 +1,69 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from '../firebase-config';
-import { onAuthStateChanged } from 'firebase/auth';
-import axios from '../axios-config';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [license, setLicense] = useState(null);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setUser(user);
+      if (user) {
         try {
-          const response = await axios.get('/api/purchases/check-purchase', {
-            params: { email: firebaseUser.email }
-          });
-          setLicense(response.data.license);
+          const response = await fetch(`${apiUrl}/api/purchases/check-purchase?email=${encodeURIComponent(user.email)}`);
+          if (response.ok) {
+            const data = await response.json();
+            setHasPurchased(data.hasPurchased);
+          }
         } catch (error) {
           console.error('Error checking license:', error);
         }
-      } else {
-        setLicense(null);
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [apiUrl]);
+
+  const login = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    return signOut(auth);
+  };
 
   const value = {
     user,
-    license,
-    isAuthenticated: !!user,
-    hasValidLicense: !!license?.isActive,
-    loading
+    login,
+    logout,
+    loading,
+    hasPurchased
   };
 
   return (
@@ -48,4 +71,8 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
 }

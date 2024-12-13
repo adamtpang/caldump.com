@@ -1,107 +1,93 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Container, Typography, CircularProgress, alpha, Alert } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-
-const SuccessContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: `linear-gradient(45deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
-  position: 'relative',
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: `radial-gradient(circle at 50% 50%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%)`,
-  },
-}));
-
-const ContentBox = styled(Box)(({ theme }) => ({
-  textAlign: 'center',
-  maxWidth: 600,
-  padding: theme.spacing(6),
-  background: alpha(theme.palette.background.paper, 0.6),
-  backdropFilter: 'blur(20px)',
-  borderRadius: theme.shape.borderRadius * 2,
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  position: 'relative',
-  zIndex: 1,
-}));
-
-const SuccessIcon = styled('i')(({ theme }) => ({
-  fontSize: '4rem',
-  color: theme.palette.primary.main,
-  marginBottom: theme.spacing(3),
-  display: 'block',
-}));
+import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 
 const Success = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [verified, setVerified] = useState(false);
+  const location = useLocation();
   const { user } = useAuth();
-  const [error, setError] = useState('');
-  const sessionId = searchParams.get('session_id');
-  const purchaseEmail = searchParams.get('customer_email');
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
-    const activateLicense = async () => {
-      if (!sessionId || !user) return;
+    const verifyPurchase = async () => {
+      if (!user) {
+        setError('Please sign in to verify your purchase.');
+        setLoading(false);
+        return;
+      }
 
-      // Check if emails match
-      if (purchaseEmail && purchaseEmail !== user.email) {
-        setError(`The email used for purchase (${purchaseEmail}) doesn't match your Google account (${user.email}). Please contact support.`);
+      const params = new URLSearchParams(location.search);
+      const sessionId = params.get('session_id');
+      const customerEmail = params.get('customer_email');
+
+      if (!sessionId) {
+        setError('Invalid session ID.');
+        setLoading(false);
+        return;
+      }
+
+      if (customerEmail !== user.email) {
+        setError(`The email used for purchase (${customerEmail}) doesn't match your Google account (${user.email}). Please contact support.`);
+        setLoading(false);
         return;
       }
 
       try {
-        // Wait a moment for Stripe webhook to process
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Redirect to app
-        navigate('/app');
-      } catch (error) {
-        console.error('Error activating license:', error);
-        setError('Failed to activate license. Please try again or contact support.');
+        const response = await fetch(`${apiUrl}/api/purchases/check-purchase?email=${encodeURIComponent(user.email)}`);
+        if (!response.ok) {
+          throw new Error('Failed to verify purchase');
+        }
+        const data = await response.json();
+        setVerified(data.hasPurchased);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error checking license:', err);
+        setError('Failed to verify purchase. Please try again or contact support.');
+        setLoading(false);
       }
     };
 
-    activateLicense();
-  }, [sessionId, user, navigate, purchaseEmail]);
+    verifyPurchase();
+  }, [location.search, user, apiUrl]);
 
-  return (
-    <SuccessContainer>
-      <ContentBox>
-        <SuccessIcon className="fas fa-calendar-check" />
-        <Typography variant="h4" gutterBottom>
-          Thank you for your purchase!
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" p={3}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Typography variant="body1">
+          If you believe this is an error, please contact support at support@caldump.com
         </Typography>
+      </Box>
+    );
+  }
 
-        {error ? (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        ) : (
-          <>
-            <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-              You're now getting access to caldump.com's powerful calendar scheduling features.
-            </Typography>
-            <Typography variant="body2" color="primary">
-              Redirecting you to the app...
-              <CircularProgress size={20} color="inherit" sx={{ ml: 2 }} />
-            </Typography>
-          </>
-        )}
-      </ContentBox>
-    </SuccessContainer>
-  );
+  if (verified) {
+    return (
+      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" p={3}>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Thank you for your purchase! Your license has been activated.
+        </Alert>
+        <Typography variant="body1">
+          You can now start using CalDump with your Google account: {user?.email}
+        </Typography>
+      </Box>
+    );
+  }
+
+  return <Navigate to="/" replace />;
 };
 
 export default Success;
