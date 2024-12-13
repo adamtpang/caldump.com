@@ -189,10 +189,10 @@ const Landing = () => {
                 <stripe-buy-button
                   buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
                   publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                  client-reference-id={user.email}
-                  customer-email={user.email}
                   success-url={`https://www.caldump.com/success?session_id={CHECKOUT_SESSION_ID}&customer_email=${encodeURIComponent(user.email)}`}
                   cancel-url="https://www.caldump.com"
+                  customer-email={user.email}
+                  client-reference-id={user.email}
                 >
                 </stripe-buy-button>
               </BuyButtonContainer>
