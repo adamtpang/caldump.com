@@ -1,7 +1,10 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Box, Container, Typography, alpha } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Box, Container, Typography, Button, Avatar, alpha } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { auth, provider } from '../../firebase-config';
+import { signInWithPopup, signOut } from 'firebase/auth';
+import axiosInstance from '../../axios-config';
 
 const StyledHeader = styled('header')(({ theme }) => ({
   background: 'transparent',
@@ -71,11 +74,78 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Landing = () => {
+  const [user, setUser] = useState(null);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setUser(user);
+      if (user) {
+        checkPurchaseStatus(user);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log('Sign in successful:', result.user.email);
+    } catch (error) {
+      console.error('Error during sign-in:', error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const checkPurchaseStatus = async (user) => {
+    try {
+      const response = await axiosInstance.get('/api/purchases/check-purchase', {
+        params: { email: user.email }
+      });
+      setHasPurchased(response.data.hasPurchased);
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+      setHasPurchased(false);
+    }
+  };
+
   return (
     <>
       <StyledHeader>
         <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Logo to="/">caldump.com</Logo>
+          {user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar
+                src={user.photoURL}
+                alt={user.displayName}
+                sx={{ width: 40, height: 40 }}
+              />
+              <Button
+                onClick={handleSignOut}
+                variant="outlined"
+                color="primary"
+                sx={{
+                  borderRadius: '20px',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                  }
+                }}
+              >
+                Sign Out
+              </Button>
+            </Box>
+          )}
         </Container>
       </StyledHeader>
 
@@ -90,13 +160,80 @@ const Landing = () => {
               set your preferences, and watch as they're automatically scheduled.
             </Typography>
 
-            <BuyButtonContainer>
-              <stripe-buy-button
-                buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
-                publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+            {!user && (
+              <Button
+                onClick={handleGoogleSignIn}
+                variant="contained"
+                size="large"
+                sx={{
+                  mb: 4,
+                  py: 2,
+                  px: 4,
+                  fontSize: '1.2rem',
+                  backgroundColor: 'white',
+                  color: 'black',
+                  '&:hover': {
+                    backgroundColor: '#f0f0f0',
+                  }
+                }}
               >
-              </stripe-buy-button>
-            </BuyButtonContainer>
+                Continue with Google
+              </Button>
+            )}
+
+            {user && !hasPurchased && (
+              <BuyButtonContainer>
+                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                  Note: Please use the same email ({user.email}) for purchase to activate your license.
+                </Typography>
+                <stripe-buy-button
+                  buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+                  publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                  client-reference-id={user.email}
+                  customer-email={user.email}
+                  success-url={`${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}&customer_email=${encodeURIComponent(user.email)}`}
+                  cancel-url={window.location.origin}
+                >
+                </stripe-buy-button>
+              </BuyButtonContainer>
+            )}
+
+            {user && hasPurchased && (
+              <Button
+                variant="contained"
+                onClick={() => navigate('/app')}
+                size="large"
+                sx={{
+                  py: 2.5,
+                  px: 8,
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  position: 'relative',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: -3,
+                    left: -3,
+                    right: -3,
+                    bottom: -3,
+                    background: 'linear-gradient(45deg, #ff69b4, #ff9ed2)',
+                    borderRadius: '25px',
+                    zIndex: -1,
+                    animation: 'borderAnimation 4s linear infinite',
+                  },
+                  '@keyframes borderAnimation': {
+                    '0%': {
+                      filter: 'hue-rotate(0deg)',
+                    },
+                    '100%': {
+                      filter: 'hue-rotate(360deg)',
+                    }
+                  }
+                }}
+              >
+                Open Calendar Dashboard
+              </Button>
+            )}
 
             <Box
               display="grid"

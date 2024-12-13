@@ -7,13 +7,28 @@ dotenv.config();
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
   }
 }));
+
+// Add security headers
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -23,6 +38,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/purchases', require('./routes/purchases'));
 
 // Stripe webhook route (needs raw body)
 app.post('/api/stripe/webhook', require('./controllers/stripeController').webhook);

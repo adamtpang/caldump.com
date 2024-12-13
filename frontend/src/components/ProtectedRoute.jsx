@@ -1,14 +1,18 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
-  // Check if user has valid license from localStorage or context
-  const hasValidLicense = localStorage.getItem('caldump_license');
+  const { isAuthenticated, hasValidLicense } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (!hasValidLicense) {
     return <Navigate to="/" replace />;
   }
 
   return children;
-}
+};
 
 export default ProtectedRoute;

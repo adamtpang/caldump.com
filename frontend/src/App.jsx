@@ -1,11 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import Landing from './pages/static/Landing';
 import Success from './pages/static/Success';
 import Privacy from './pages/static/Privacy';
-import Dashboard from './pages/App/Dashboard';
+import Product from './pages/App/Product';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Theme setup
 const theme = createTheme({
@@ -111,24 +112,32 @@ const theme = createTheme({
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/success" element={<Success />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route
-            path="/app"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/privacy" element={<Privacy />} />
+
+            {/* Protected product route */}
+            <Route
+              path="/app/*"
+              element={
+                <ProtectedRoute>
+                  <Product />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

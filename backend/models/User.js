@@ -11,31 +11,29 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  name: String,
-  picture: String,
-  settings: {
-    startTime: {
-      type: String,
-      default: '09:00'
-    },
-    endTime: {
-      type: String,
-      default: '17:00'
-    }
-  },
+  displayName: String,
+  photoURL: String,
   license: {
     isActive: {
       type: Boolean,
-      default: false
+      default: false,
     },
     stripeCustomerId: String,
     subscriptionId: String,
-    expiresAt: Date
+    expiresAt: Date,
   },
-  accessToken: String,
-  refreshToken: String,
+  settings: {
+    startTime: {
+      type: String,
+      default: '09:00', // 24-hour format
+    },
+    endTime: {
+      type: String,
+      default: '17:00', // 24-hour format
+    },
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
 module.exports = mongoose.model('User', userSchema);
