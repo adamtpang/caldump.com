@@ -1,25 +1,37 @@
 import axios from 'axios';
 
+// Debug logging for environment
+console.log('Environment:', {
+  NODE_ENV: import.meta.env.MODE,
+  hostname: window.location.hostname,
+  VITE_API_URL: import.meta.env.VITE_API_URL
+});
+
 // Determine the base URL based on environment
 const getBaseURL = () => {
+  const hostname = window.location.hostname;
+
   // For development
-  if (window.location.hostname === 'localhost') {
-    return import.meta.env.VITE_API_URL || 'http://localhost:8080';
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8080';
   }
+
   // For production
   return 'https://caldumpcom-production.up.railway.app';
 };
 
+const baseURL = getBaseURL();
+console.log('Using API URL:', baseURL);
+
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
-  baseURL: getBaseURL(),
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache'
   },
-  // Add timeout
   timeout: 10000
 });
 
@@ -37,7 +49,13 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log('Making request to:', config.baseURL + config.url);
+    // Debug logging
+    console.log('Making request:', {
+      url: config.baseURL + config.url,
+      method: config.method,
+      headers: config.headers
+    });
+
     return config;
   },
   (error) => {
@@ -52,33 +70,39 @@ axiosInstance.interceptors.response.use(
     console.log('Response received:', {
       url: response.config.url,
       method: response.config.method,
-      status: response.status
+      status: response.status,
+      data: response.data ? 'present' : 'empty'
     });
     return response;
   },
   (error) => {
-    // Detailed error logging
-    console.error('API Error:', {
+    // Enhanced error logging
+    const errorDetails = {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
       message: error.message,
       data: error.response?.data,
-      baseURL: error.config?.baseURL
-    });
+      baseURL: error.config?.baseURL,
+      code: error.code,
+      name: error.name
+    };
+
+    console.error('API Error:', errorDetails);
 
     // Retry logic for network errors
     if (error.message === 'Network Error' && error.config && !error.config.__isRetryRequest) {
+      console.log('Retrying failed request...');
       error.config.__isRetryRequest = true;
       return new Promise(resolve => setTimeout(resolve, 1000))
-        .then(() => axiosInstance(error.config));
+        .then(() => {
+          console.log('Retrying request to:', error.config.url);
+          return axiosInstance(error.config);
+        });
     }
 
     return Promise.reject(error);
   }
 );
-
-// Log the API URL being used
-console.log('API URL:', getBaseURL());
 
 export default axiosInstance;

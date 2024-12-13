@@ -119,9 +119,9 @@ const connectDB = async (retries = 5, delay = 5000) => {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10,
-      minPoolSize: 2,
-      keepAlive: true,
-      keepAliveInitialDelay: 300000
+      connectTimeoutMS: 10000,
+      retryWrites: true,
+      w: 'majority'
     };
 
     await mongoose.connect(process.env.MONGODB_URI, options);
@@ -129,20 +129,26 @@ const connectDB = async (retries = 5, delay = 5000) => {
 
     // Monitor MongoDB connection
     mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected! Attempting to reconnect...');
+      console.error('MongoDB disconnected! Attempting to reconnect...');
       setTimeout(() => connectDB(1), 5000);
     });
 
     mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-      if (retries > 0) {
-        console.log(`Retrying connection in ${delay}ms... (${retries} attempts left)`);
-        setTimeout(() => connectDB(retries - 1, delay), delay);
-      }
+      console.error('MongoDB connection error:', {
+        message: err.message,
+        code: err.code,
+        name: err.name
+      });
     });
 
   } catch (err) {
-    console.error('MongoDB connection error:', err);
+    console.error('MongoDB connection error:', {
+      message: err.message,
+      code: err.code,
+      name: err.name,
+      stack: err.stack
+    });
+
     if (retries > 0) {
       console.log(`Retrying connection in ${delay}ms... (${retries} attempts left)`);
       setTimeout(() => connectDB(retries - 1, delay), delay);
