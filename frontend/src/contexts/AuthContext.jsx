@@ -19,28 +19,47 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+const checkPurchaseStatus = async (email, retryCount = 0) => {
+  try {
+    console.log(`Attempt ${retryCount + 1}: Checking purchase status for ${email}`);
+    const response = await axiosInstance.get('/api/purchases/check-purchase', {
+      params: { email }
+    });
+    console.log('Purchase status response:', response.data);
+    return response.data.hasPurchased;
+  } catch (error) {
+    console.error(`Attempt ${retryCount + 1} failed:`, error);
+    if (retryCount < 2) { // Try up to 3 times
+      console.log('Retrying in 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return checkPurchaseStatus(email, retryCount + 1);
+    }
+    throw error;
+  }
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
         try {
-          console.log('Checking purchase status for:', user.email);
-          const response = await axiosInstance.get('/api/purchases/check-purchase', {
-            params: { email: user.email }
-          });
-          console.log('Purchase status response:', response.data);
-          setHasPurchased(response.data.hasPurchased);
+          const purchased = await checkPurchaseStatus(user.email);
+          setHasPurchased(purchased);
+          setError(null);
         } catch (error) {
           console.error('Error checking purchase status:', error);
           setHasPurchased(false);
+          setError('Failed to verify purchase status. Please try refreshing the page.');
         }
       } else {
         setHasPurchased(false);
+        setError(null);
       }
       setLoading(false);
     });
@@ -60,6 +79,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setHasPurchased(false);
+    setError(null);
     return signOut(auth);
   };
 
@@ -68,7 +88,8 @@ export function AuthProvider({ children }) {
     login,
     logout,
     loading,
-    hasPurchased
+    hasPurchased,
+    error
   };
 
   return (
