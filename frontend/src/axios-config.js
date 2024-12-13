@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
-  // Use Railway URL directly
-  baseURL: 'https://caldumpcom-production.up.railway.app',
+  // Use environment variable for API URL
+  baseURL: import.meta.env.VITE_API_URL || 'https://caldumpcom-production.up.railway.app',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -26,7 +26,7 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log('Making request to:', config.url);
+    console.log('Making request to:', config.baseURL + config.url);
     return config;
   },
   (error) => {
@@ -59,5 +59,8 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Log the API URL being used
+console.log('API URL:', import.meta.env.VITE_API_URL || 'https://caldumpcom-production.up.railway.app');
 
 export default axiosInstance;
