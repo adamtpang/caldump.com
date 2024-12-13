@@ -10,18 +10,20 @@ console.log('Environment variables:', {
 
 // Determine the API URL with fallbacks
 const determineApiUrl = () => {
-  const envApiUrl = import.meta.env.VITE_API_URL;
   const productionUrl = 'https://caldumpcom-production.up.railway.app';
   const developmentUrl = 'http://localhost:5000';
 
+  // Always use production URL in production mode
+  if (import.meta.env.MODE === 'production') {
+    console.log('Using production URL:', productionUrl);
+    return productionUrl;
+  }
+
+  // In development, use environment variable if available
+  const envApiUrl = import.meta.env.VITE_API_URL;
   if (envApiUrl) {
     console.log('Using API URL from environment:', envApiUrl);
     return envApiUrl;
-  }
-
-  if (import.meta.env.MODE === 'production') {
-    console.log('Using production fallback URL:', productionUrl);
-    return productionUrl;
   }
 
   console.log('Using development fallback URL:', developmentUrl);
