@@ -19,22 +19,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-const checkPurchaseStatus = async (email, retryCount = 0) => {
+const checkPurchaseStatus = async (email) => {
   try {
-    console.log(`Attempt ${retryCount + 1}: Checking purchase status for ${email}`);
     const response = await axiosInstance.get('/api/purchases/check-purchase', {
       params: { email }
     });
-    console.log('Purchase status response:', response.data);
     return response.data.hasPurchased;
   } catch (error) {
-    console.error(`Attempt ${retryCount + 1} failed:`, error);
-    if (retryCount < 2) { // Try up to 3 times
-      console.log('Retrying in 1 second...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return checkPurchaseStatus(email, retryCount + 1);
-    }
-    throw error;
+    console.error('Error checking purchase status:', error);
+    return false;
   }
 };
 
@@ -44,11 +37,22 @@ export function AuthProvider({ children }) {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [error, setError] = useState(null);
 
+  // Clear any cached data on mount
+  useEffect(() => {
+    localStorage.removeItem('caldump_token');
+    setHasPurchased(false);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
         try {
+          // Get fresh ID token
+          const token = await user.getIdToken(true);
+          localStorage.setItem('caldump_token', token);
+
           const purchased = await checkPurchaseStatus(user.email);
           setHasPurchased(purchased);
           setError(null);
@@ -58,13 +62,17 @@ export function AuthProvider({ children }) {
           setError('Failed to verify purchase status. Please try refreshing the page.');
         }
       } else {
+        localStorage.removeItem('caldump_token');
         setHasPurchased(false);
         setError(null);
       }
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      localStorage.removeItem('caldump_token');
+    };
   }, []);
 
   const login = async () => {
@@ -77,10 +85,16 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    setHasPurchased(false);
-    setError(null);
-    return signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('caldump_token');
+      setHasPurchased(false);
+      setError(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   };
 
   const value = {

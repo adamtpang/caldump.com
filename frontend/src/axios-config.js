@@ -1,42 +1,10 @@
 import axios from 'axios';
 
-// Debug logging for environment
-console.log('Environment:', {
-  NODE_ENV: import.meta.env.MODE,
-  hostname: window.location.hostname,
-  VITE_API_URL: import.meta.env.VITE_API_URL
-});
-
-// Determine the base URL based on environment
-const getBaseURL = () => {
-  const hostname = window.location.hostname;
-
-  // For development
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8080'; // Use port 8080 for local development
-  }
-
-  // For production domains
-  if (hostname === 'caldump.com' || hostname === 'www.caldump.com') {
-    return 'https://caldumpcom-production.up.railway.app';
-  }
-
-  // For preview deployments
-  if (hostname.includes('vercel.app')) {
-    return 'https://caldumpcom-production.up.railway.app';
-  }
-
-  // Default to production API
-  console.warn('Unknown hostname, defaulting to production API:', hostname);
-  return 'https://caldumpcom-production.up.railway.app';
-};
-
-const baseURL = getBaseURL();
-console.log('Using API URL:', baseURL);
-
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
-  baseURL,
+  baseURL: import.meta.env.PROD
+    ? 'https://caldumpcom-production.up.railway.app'
+    : 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -63,8 +31,7 @@ axiosInstance.interceptors.request.use(
     // Debug logging
     console.log('Making request:', {
       url: config.baseURL + config.url,
-      method: config.method,
-      headers: config.headers
+      method: config.method
     });
 
     return config;
@@ -81,35 +48,24 @@ axiosInstance.interceptors.response.use(
     console.log('Response received:', {
       url: response.config.url,
       method: response.config.method,
-      status: response.status,
-      data: response.data ? 'present' : 'empty'
+      status: response.status
     });
     return response;
   },
   (error) => {
-    // Enhanced error logging
-    const errorDetails = {
+    console.error('API Error:', {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
-      message: error.message,
-      data: error.response?.data,
-      baseURL: error.config?.baseURL,
-      code: error.code,
-      name: error.name
-    };
-
-    console.error('API Error:', errorDetails);
+      message: error.message
+    });
 
     // Retry logic for network errors
     if (error.message === 'Network Error' && error.config && !error.config.__isRetryRequest) {
       console.log('Retrying failed request...');
       error.config.__isRetryRequest = true;
       return new Promise(resolve => setTimeout(resolve, 1000))
-        .then(() => {
-          console.log('Retrying request to:', error.config.url);
-          return axiosInstance(error.config);
-        });
+        .then(() => axiosInstance(error.config));
     }
 
     return Promise.reject(error);
