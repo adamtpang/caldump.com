@@ -4,5 +4,12 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "redirects": [
+    {
+      "source": "https://caldump.com/:path*",
+      "destination": "https://www.caldump.com/:path*",
+      "permanent": true
+    }
   ]
 }
