@@ -19,8 +19,6 @@ const userSchema = new mongoose.Schema({
       default: false,
     },
     stripeCustomerId: String,
-    subscriptionId: String,
-    expiresAt: Date,
   },
   settings: {
     startTime: {
