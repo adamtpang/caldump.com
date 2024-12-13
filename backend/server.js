@@ -3,98 +3,158 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
+// Load environment variables
 dotenv.config();
 
+// Initialize express
 const app = express();
 
 // Debug logging
-console.log('Starting server...');
+console.log('=== Server Initialization ===');
 console.log('Environment:', process.env.NODE_ENV || 'development');
+console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not Set');
+console.log('Port:', process.env.PORT || 8080);
 
 // CORS configuration - MUST BE FIRST
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://caldump.com',
+      'https://www.caldump.com',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://caldump-git-main-adampangelinans-projects.vercel.app'
+    ];
+
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+// Request logging middleware with detailed info
 app.use((req, res, next) => {
-  const allowedOrigins = [
-    'https://caldump.com',
-    'https://www.caldump.com',
-    'http://localhost:5173',
-    'https://caldump-git-main-adampangelinans-projects.vercel.app'
-  ];
-
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`
+    );
+  });
   next();
 });
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-  next();
-});
+// Memory usage logging
+const logMemoryUsage = () => {
+  const used = process.memoryUsage();
+  console.log('Memory Usage:');
+  for (let key in used) {
+    console.log(`${key}: ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
+  }
+};
+
+// Log memory usage every 5 minutes
+setInterval(logMemoryUsage, 5 * 60 * 1000);
 
 // Root route for basic server check
 app.get('/', (req, res) => {
   res.json({
     message: 'CalDump API server is running',
     version: '1.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV
   });
 });
 
-// Health check route
+// Health check route with detailed status
 app.get('/health', (req, res) => {
-  res.json({
+  const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
+    uptime: process.uptime(),
+    mongodb: {
+      status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      readyState: mongoose.connection.readyState
+    },
+    memory: process.memoryUsage(),
+    environment: process.env.NODE_ENV
+  };
+
+  res.json(health);
 });
 
 // Special handling for Stripe webhook route
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), require('./controllers/stripeController').webhook);
+app.post('/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./controllers/stripeController').webhook
+);
 
-// Regular JSON parsing for all other routes
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Regular JSON parsing with reasonable limits
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Add security headers
+// Security headers
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 });
 
-// MongoDB connection with retry logic
-const connectDB = async (retries = 5) => {
+// MongoDB connection with enhanced retry logic
+const connectDB = async (retries = 5, delay = 5000) => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    console.log('Attempting MongoDB connection...');
+    const options = {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      keepAlive: true,
+      keepAliveInitialDelay: 300000
+    };
+
+    await mongoose.connect(process.env.MONGODB_URI, options);
+    console.log('Successfully connected to MongoDB');
+
+    // Monitor MongoDB connection
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected! Attempting to reconnect...');
+      setTimeout(() => connectDB(1), 5000);
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      if (retries > 0) {
+        console.log(`Retrying connection in ${delay}ms... (${retries} attempts left)`);
+        setTimeout(() => connectDB(retries - 1, delay), delay);
+      }
+    });
+
   } catch (err) {
-    if (retries > 0) {
-      console.log(`MongoDB connection failed. Retrying... (${retries} attempts left)`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      return connectDB(retries - 1);
-    }
     console.error('MongoDB connection error:', err);
-    process.exit(1);
+    if (retries > 0) {
+      console.log(`Retrying connection in ${delay}ms... (${retries} attempts left)`);
+      setTimeout(() => connectDB(retries - 1, delay), delay);
+    } else {
+      console.error('All MongoDB connection attempts failed');
+      process.exit(1);
+    }
   }
 };
 
-connectDB();
-
-// Debug logging for routes
-console.log('Registering API routes...');
-
 // API Routes
+console.log('Registering API routes...');
 const authRoutes = require('./routes/auth');
 const calendarRoutes = require('./routes/calendar');
 const purchasesRoutes = require('./routes/purchases');
@@ -105,18 +165,17 @@ app.use('/api/purchases', purchasesRoutes);
 
 // Print registered routes
 console.log('\nRegistered Routes:');
-const printRoutes = (stack, prefix = '') => {
-  stack.forEach(layer => {
-    if (layer.route) {
-      const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
-      console.log(`${methods} ${prefix}${layer.route.path}`);
-    } else if (layer.name === 'router') {
-      const newPrefix = prefix + (layer.regexp.toString().split('/')[1] || '');
-      printRoutes(layer.handle.stack, `${newPrefix}/`);
-    }
-  });
-};
-printRoutes(app._router.stack);
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+  } else if (middleware.name === 'router') {
+    middleware.handle.stack.forEach((handler) => {
+      if (handler.route) {
+        console.log(`${Object.keys(handler.route.methods).join(', ').toUpperCase()} /api${handler.route.path}`);
+      }
+    });
+  }
+});
 
 // 404 handler
 app.use((req, res) => {
@@ -128,9 +187,16 @@ app.use((req, res) => {
   });
 });
 
-// Error handling middleware
+// Error handling middleware with detailed logging
 app.use((err, req, res, next) => {
+  console.error('=== Error Details ===');
+  console.error('Timestamp:', new Date().toISOString());
   console.error('Error:', err);
+  console.error('Stack:', err.stack);
+  console.error('Request URL:', req.url);
+  console.error('Request Method:', req.method);
+  console.error('Request Headers:', req.headers);
+
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
     path: req.url,
@@ -138,37 +204,75 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 8080;
-
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`Try accessing: http://localhost:${PORT}/health`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
-    process.exit(1);
-  } else {
-    console.error('Server error:', err);
-  }
-});
-
-// Graceful shutdown
-const gracefulShutdown = async () => {
+// Start server only after MongoDB connection is established
+const startServer = async () => {
   try {
-    console.log('Received shutdown signal. Closing HTTP server...');
-    await new Promise((resolve) => server.close(resolve));
+    await connectDB();
 
-    console.log('Closing MongoDB connection...');
-    await mongoose.connection.close();
+    const PORT = process.env.PORT || 8080;
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`\n=== Server Started ===`);
+      console.log(`Time: ${new Date().toISOString()}`);
+      console.log(`Port: ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Memory Usage:`);
+      logMemoryUsage();
+    });
 
-    console.log('Shutdown completed');
-    process.exit(0);
+    // Graceful shutdown handler
+    const gracefulShutdown = async (signal) => {
+      console.log(`\n=== Graceful Shutdown Initiated ===`);
+      console.log(`Signal: ${signal}`);
+      console.log(`Time: ${new Date().toISOString()}`);
+
+      try {
+        // Stop accepting new requests
+        server.close(() => {
+          console.log('HTTP server closed');
+        });
+
+        // Close MongoDB connection
+        if (mongoose.connection.readyState !== 0) {
+          await mongoose.connection.close();
+          console.log('MongoDB connection closed');
+        }
+
+        console.log('Graceful shutdown completed');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error during shutdown:', err);
+        process.exit(1);
+      }
+    };
+
+    // Handle various shutdown signals
+    ['SIGTERM', 'SIGINT', 'SIGUSR2'].forEach(signal => {
+      process.on(signal, () => gracefulShutdown(signal));
+    });
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (err) => {
+      console.error('=== Uncaught Exception ===');
+      console.error('Time:', new Date().toISOString());
+      console.error('Error:', err);
+      console.error('Stack:', err.stack);
+      gracefulShutdown('uncaughtException');
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('=== Unhandled Rejection ===');
+      console.error('Time:', new Date().toISOString());
+      console.error('Reason:', reason);
+      console.error('Promise:', promise);
+      gracefulShutdown('unhandledRejection');
+    });
+
   } catch (err) {
-    console.error('Error during shutdown:', err);
+    console.error('Failed to start server:', err);
     process.exit(1);
   }
 };
 
-// Listen for shutdown signals
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+// Start the server
+startServer();
