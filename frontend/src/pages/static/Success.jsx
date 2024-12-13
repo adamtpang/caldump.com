@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import axiosInstance from '../../axios-config';
 
 const Success = () => {
   const [loading, setLoading] = useState(true);
@@ -9,7 +10,6 @@ const Success = () => {
   const [verified, setVerified] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
-  const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const verifyPurchase = async () => {
@@ -36,12 +36,10 @@ const Success = () => {
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/purchases/check-purchase?email=${encodeURIComponent(user.email)}`);
-        if (!response.ok) {
-          throw new Error('Failed to verify purchase');
-        }
-        const data = await response.json();
-        setVerified(data.hasPurchased);
+        const response = await axiosInstance.get(`/api/purchases/check-purchase`, {
+          params: { email: user.email }
+        });
+        setVerified(response.data.hasPurchased);
         setLoading(false);
       } catch (err) {
         console.error('Error checking license:', err);
@@ -51,7 +49,7 @@ const Success = () => {
     };
 
     verifyPurchase();
-  }, [location.search, user, apiUrl]);
+  }, [location.search, user]);
 
   if (loading) {
     return (
