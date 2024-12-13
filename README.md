@@ -45,7 +45,7 @@ npm run dev
 
 ## Development
 - Frontend runs on http://localhost:5173
-- Backend runs on http://localhost:5000
+- Backend runs on http://localhost:8080
 
 ## Deployment
 - Frontend: Vercel
