@@ -10,18 +10,39 @@ const checkPurchaseStatus = async (email) => {
     console.log('Checking purchase status for:', email);
     console.log('Using API URL:', API_URL);
 
-    const response = await axiosInstance.get('/api/purchases/check-purchase', {
-      params: { email }
-    });
+    // Add retry logic for production
+    const maxRetries = 3;
+    let retries = 0;
+    let lastError;
 
-    console.log('Purchase status response:', response.data);
-    return response.data.hasPurchased;
-  } catch (error) {
-    console.error('Error checking purchase status:', {
-      error: error.message,
+    while (retries < maxRetries) {
+      try {
+        const response = await axiosInstance.get('/api/purchases/check-purchase', {
+          params: { email }
+        });
+        console.log('Purchase status response:', response.data);
+        return response.data.hasPurchased;
+      } catch (error) {
+        lastError = error;
+        retries++;
+        if (retries < maxRetries) {
+          console.log(`Retry ${retries}/${maxRetries} for purchase status check`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+        }
+      }
+    }
+
+    console.error('Final error checking purchase status:', {
+      error: lastError.message,
       email,
-      config: error.config,
-      response: error.response?.data
+      config: lastError.config,
+      response: lastError.response?.data
+    });
+    return false;
+  } catch (error) {
+    console.error('Error in purchase status check wrapper:', {
+      error: error.message,
+      stack: error.stack
     });
     return false;
   }

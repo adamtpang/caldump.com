@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-// Get the API URL from environment variables
-const API_URL = import.meta.env.VITE_API_URL;
+// Determine API URL based on environment
+const isProd = window.location.hostname === 'caldump.com' || window.location.hostname === 'www.caldump.com';
+const API_URL = isProd
+  ? 'https://caldumpcom-production.up.railway.app'
+  : 'http://localhost:8080';
 
-if (!API_URL) {
-  console.error('API_URL is not set in environment variables');
-}
-
+console.log('Environment:', isProd ? 'production' : 'development');
 console.log('Using API URL:', API_URL);
 
 // Create axios instance with base configuration
@@ -45,7 +45,8 @@ axiosInstance.interceptors.response.use(
       url: error.config?.url,
       baseURL: error.config?.baseURL,
       status: error.response?.status,
-      message: error.message
+      message: error.message,
+      data: error.response?.data
     });
     return Promise.reject(error);
   }
