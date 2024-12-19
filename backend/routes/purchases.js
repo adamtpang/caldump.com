@@ -94,21 +94,44 @@ router.post('/admin/fix-google-id', async (req, res) => {
 });
 
 router.get('/check-purchase', async (req, res) => {
-  console.log('Received check-purchase request:', req.query);
   try {
     const { email } = req.query;
+    console.log('Checking purchase status for email:', email);
+
+    if (!email) {
+      console.error('No email provided for purchase check');
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
     const user = await User.findOne({ email });
+    console.log('Purchase check result:', {
+      email,
+      userFound: !!user,
+      licenseStatus: user?.license?.isActive || false,
+      licenseDetails: user?.license || null
+    });
 
     if (!user) {
-      return res.json({ hasPurchased: false });
+      return res.json({
+        hasPurchased: false,
+        message: 'User not found'
+      });
     }
 
     res.json({
       hasPurchased: user.license?.isActive || false,
-      license: user.license
+      license: {
+        isActive: user.license?.isActive || false,
+        purchaseDate: user.license?.purchaseDate,
+        stripeCustomerId: user.license?.stripeCustomerId
+      }
     });
   } catch (error) {
-    console.error('Check purchase error:', error);
+    console.error('Check purchase error:', {
+      error: error.message,
+      stack: error.stack,
+      email: req.query.email
+    });
     res.status(500).json({ error: 'Failed to check purchase status' });
   }
 });

@@ -193,6 +193,7 @@ const Landing = () => {
                   cancel-url="https://www.caldump.com"
                   customer-email={user.email}
                   client-reference-id={user.email}
+                  customer-creation="always"
                 >
                 </stripe-buy-button>
               </BuyButtonContainer>
