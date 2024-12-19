@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
-import axiosInstance from '../../axios-config';
+import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
 
 const Success = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [verified, setVerified] = useState(false);
-  const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, verifyPurchaseStatus } = useAuth();
 
   useEffect(() => {
     const verifyPurchase = async () => {
@@ -19,42 +18,38 @@ const Success = () => {
         return;
       }
 
-      const params = new URLSearchParams(location.search);
-      const sessionId = params.get('session_id');
-      const customerEmail = params.get('customer_email');
-
-      if (!sessionId) {
-        setError('Invalid session ID.');
-        setLoading(false);
-        return;
-      }
-
-      if (customerEmail !== user.email) {
-        setError(`The email used for purchase (${customerEmail}) doesn't match your Google account (${user.email}). Please contact support.`);
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await axiosInstance.get(`/api/purchases/check-purchase`, {
-          params: { email: user.email }
-        });
-        setVerified(response.data.hasPurchased);
+        console.log('Verifying purchase for:', user.email);
+        const purchased = await verifyPurchaseStatus(user);
+        console.log('Purchase verification result:', { purchased });
+
+        setVerified(purchased);
         setLoading(false);
+
+        if (purchased) {
+          // Wait a moment before redirecting
+          setTimeout(() => {
+            navigate('/app');
+          }, 2000);
+        }
       } catch (err) {
-        console.error('Error checking license:', err);
+        console.error('Error verifying purchase:', err);
         setError('Failed to verify purchase. Please try again or contact support.');
         setLoading(false);
       }
     };
 
-    verifyPurchase();
-  }, [location.search, user]);
+    // Add a small delay to ensure the webhook has processed
+    setTimeout(verifyPurchase, 2000);
+  }, [user, verifyPurchaseStatus, navigate]);
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
+      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" p={3}>
+        <CircularProgress sx={{ mb: 2 }} />
+        <Typography variant="body2" color="text.secondary">
+          Verifying your purchase...
+        </Typography>
       </Box>
     );
   }
@@ -65,9 +60,12 @@ const Success = () => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Typography variant="body1">
+        <Typography variant="body1" sx={{ mb: 2 }}>
           If you believe this is an error, please contact support at support@caldump.com
         </Typography>
+        <Button variant="contained" onClick={() => navigate('/')}>
+          Return to Home
+        </Button>
       </Box>
     );
   }
@@ -78,14 +76,29 @@ const Success = () => {
         <Alert severity="success" sx={{ mb: 2 }}>
           Thank you for your purchase! Your license has been activated.
         </Alert>
-        <Typography variant="body1">
+        <Typography variant="body1" sx={{ mb: 2 }}>
           You can now start using CalDump with your Google account: {user?.email}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Redirecting to the app...
         </Typography>
       </Box>
     );
   }
 
-  return <Navigate to="/" replace />;
+  return (
+    <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" p={3}>
+      <Alert severity="warning" sx={{ mb: 2 }}>
+        Purchase verification pending. Please wait...
+      </Alert>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        This may take a few moments to process.
+      </Typography>
+      <Button variant="contained" onClick={() => navigate('/')}>
+        Return to Home
+      </Button>
+    </Box>
+  );
 };
 
 export default Success;

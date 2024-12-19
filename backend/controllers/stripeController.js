@@ -29,7 +29,8 @@ exports.webhook = async (req, res) => {
           customerEmail: session.customer_email,
           customerId: session.customer,
           clientReferenceId: session.client_reference_id,
-          metadata: session.metadata
+          metadata: session.metadata,
+          customerDetails: session.customer_details
         });
         await handleCheckoutComplete(session);
         break;
@@ -58,33 +59,40 @@ async function handleCheckoutComplete(session) {
 
     // Find user by email
     let user = await User.findOne({ email });
-    if (!user) {
-      console.log('User not found, creating new user:', email);
-      // Create new user if doesn't exist
-      user = new User({
-        email,
-        googleId: email, // Will be updated when they sign in with Google
-        license: {
-          isActive: true,
-          stripeCustomerId: session.customer,
-          purchaseDate: new Date()
-        }
-      });
-    } else {
+    console.log('User lookup result:', user ? 'Found' : 'Not found');
+
+    if (user) {
       console.log('Found existing user:', {
         email: user.email,
         googleId: user.googleId
       });
-    }
 
-    // Update user's license
-    user.license = {
-      isActive: true,
-      stripeCustomerId: session.customer,
-      purchaseDate: new Date(),
-      ...user.license, // Preserve any existing license data
-      lastUpdated: new Date()
-    };
+      // Update existing user's license
+      user.license = {
+        ...user.license,
+        isActive: true,
+        stripeCustomerId: session.customer || 'manual-activation',
+        purchaseDate: new Date(),
+        lastUpdated: new Date()
+      };
+    } else {
+      console.log('Creating temporary user record for:', email);
+      // Create a temporary user record
+      user = new User({
+        email,
+        googleId: null, // Will be set when they sign in with Google
+        license: {
+          isActive: true,
+          stripeCustomerId: session.customer || 'manual-activation',
+          purchaseDate: new Date(),
+          lastUpdated: new Date()
+        },
+        settings: {
+          startTime: '09:00',
+          endTime: '17:00'
+        }
+      });
+    }
 
     await user.save();
     console.log('Successfully updated user license:', {
@@ -98,7 +106,8 @@ async function handleCheckoutComplete(session) {
     console.log('Verification of saved user:', {
       email: verifyUser.email,
       licenseActive: verifyUser.license?.isActive,
-      stripeCustomerId: verifyUser.license?.stripeCustomerId
+      stripeCustomerId: verifyUser.license?.stripeCustomerId,
+      googleId: verifyUser.googleId
     });
 
   } catch (error) {

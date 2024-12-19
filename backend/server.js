@@ -23,6 +23,7 @@ const corsOptions = {
       'https://www.caldump.com',
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://localhost:8080',
       'https://caldump-git-main-adampangelinans-projects.vercel.app'
     ];
 
@@ -38,6 +39,7 @@ const corsOptions = {
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  credentials: true,
   maxAge: 86400 // 24 hours
 };
 
@@ -215,7 +217,7 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    // Railway provides PORT environment variable
+    // Use port 8080 for development
     const PORT = process.env.PORT || 8080;
 
     // Log environment details
@@ -230,6 +232,7 @@ const startServer = async () => {
       console.log(`Time: ${new Date().toISOString()}`);
       console.log(`Port: ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`API URL: http://localhost:${PORT}`);
       console.log(`Memory Usage:`);
       logMemoryUsage();
     });
