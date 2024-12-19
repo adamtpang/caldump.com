@@ -1,8 +1,13 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.PROD
-  ? 'https://caldumpcom-production.up.railway.app'
-  : 'http://localhost:8080';
+// Get the API URL from environment variables
+const API_URL = import.meta.env.VITE_API_URL;
+
+if (!API_URL) {
+  console.error('API_URL is not set in environment variables');
+}
+
+console.log('Using API URL:', API_URL);
 
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
@@ -17,6 +22,9 @@ const axiosInstance = axios.create({
 // Add request interceptor for auth token
 axiosInstance.interceptors.request.use(
   async (config) => {
+    // Log the request URL for debugging
+    console.log('Making request to:', config.baseURL + config.url);
+
     const token = localStorage.getItem('caldump_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,6 +43,7 @@ axiosInstance.interceptors.response.use(
   (error) => {
     console.error('API Error:', {
       url: error.config?.url,
+      baseURL: error.config?.baseURL,
       status: error.response?.status,
       message: error.message
     });

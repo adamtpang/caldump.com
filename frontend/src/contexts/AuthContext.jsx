@@ -1,22 +1,27 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, provider } from '../firebase-config';
-import axiosInstance from '../axios-config';
+import axiosInstance, { API_URL } from '../axios-config';
 
 const AuthContext = createContext();
 
 const checkPurchaseStatus = async (email) => {
   try {
     console.log('Checking purchase status for:', email);
+    console.log('Using API URL:', API_URL);
+
     const response = await axiosInstance.get('/api/purchases/check-purchase', {
       params: { email }
     });
+
     console.log('Purchase status response:', response.data);
     return response.data.hasPurchased;
   } catch (error) {
     console.error('Error checking purchase status:', {
       error: error.message,
-      email
+      email,
+      config: error.config,
+      response: error.response?.data
     });
     return false;
   }
@@ -30,6 +35,7 @@ export function AuthProvider({ children }) {
 
   const verifyPurchaseStatus = async (user) => {
     try {
+      console.log('Starting purchase verification for:', user.email);
       const purchased = await checkPurchaseStatus(user.email);
       console.log('Purchase verification result:', {
         email: user.email,
@@ -39,7 +45,11 @@ export function AuthProvider({ children }) {
       setError(null);
       return purchased;
     } catch (error) {
-      console.error('Purchase verification error:', error);
+      console.error('Purchase verification error:', {
+        error: error.message,
+        email: user.email,
+        stack: error.stack
+      });
       setHasPurchased(false);
       setError('Failed to verify purchase status');
       return false;
@@ -53,11 +63,16 @@ export function AuthProvider({ children }) {
 
       if (user) {
         try {
+          console.log('Getting fresh token for:', user.email);
           const token = await user.getIdToken(true);
           localStorage.setItem('caldump_token', token);
           await verifyPurchaseStatus(user);
         } catch (error) {
-          console.error('Auth state change error:', error);
+          console.error('Auth state change error:', {
+            error: error.message,
+            email: user.email,
+            stack: error.stack
+          });
           setHasPurchased(false);
           setError('Failed to verify purchase status');
         }
@@ -82,7 +97,11 @@ export function AuthProvider({ children }) {
       await verifyPurchaseStatus(result.user);
       return result.user;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error:', {
+        error: error.message,
+        code: error.code,
+        stack: error.stack
+      });
       throw error;
     }
   };
@@ -94,7 +113,10 @@ export function AuthProvider({ children }) {
       setHasPurchased(false);
       setError(null);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout error:', {
+        error: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   };
