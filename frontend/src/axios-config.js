@@ -27,13 +27,24 @@ axiosInstance.interceptors.request.use(
     const fullUrl = config.baseURL + config.url;
     console.log('Making request to:', fullUrl, {
       method: config.method,
-      params: config.params
+      params: config.params,
+      headers: {
+        ...config.headers,
+        Authorization: config.headers.Authorization ? '[REDACTED]' : 'none'
+      }
     });
 
     const token = localStorage.getItem('caldump_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Ensure proper CORS headers
+    config.headers['Access-Control-Allow-Origin'] = isDev
+      ? 'http://localhost:5173'
+      : 'https://caldump.com';
+    config.headers['Access-Control-Allow-Credentials'] = 'true';
+
     return config;
   },
   (error) => {
@@ -56,14 +67,26 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', {
+    // Enhanced error logging
+    const errorDetails = {
       url: error.config?.url,
       baseURL: error.config?.baseURL,
       status: error.response?.status,
       message: error.message,
       data: error.response?.data,
       stack: error.stack
-    });
+    };
+
+    // Network or CORS errors
+    if (error.message === 'Network Error') {
+      console.error('Network or CORS error:', {
+        ...errorDetails,
+        headers: error.config?.headers
+      });
+    } else {
+      console.error('API Error:', errorDetails);
+    }
+
     return Promise.reject(error);
   }
 );

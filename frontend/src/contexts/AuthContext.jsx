@@ -18,13 +18,26 @@ const checkPurchaseStatus = async (email) => {
     while (retries < maxRetries) {
       try {
         const response = await axiosInstance.get('/api/purchases/check-purchase', {
-          params: { email }
+          params: { email },
+          timeout: 5000 // 5 second timeout
         });
-        console.log('Purchase status response:', response.data);
-        return response.data.hasPurchased;
+
+        if (response.data && typeof response.data.hasPurchased === 'boolean') {
+          console.log('Purchase status response:', response.data);
+          return response.data.hasPurchased;
+        } else {
+          console.error('Invalid purchase status response:', response.data);
+          throw new Error('Invalid purchase status response');
+        }
       } catch (error) {
         lastError = error;
         retries++;
+        console.error(`Purchase status check attempt ${retries} failed:`, {
+          error: error.message,
+          config: error.config,
+          response: error.response?.data
+        });
+
         if (retries < maxRetries) {
           console.log(`Retry ${retries}/${maxRetries} for purchase status check`);
           await new Promise(resolve => setTimeout(resolve, 1000 * retries));
@@ -55,6 +68,13 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   const verifyPurchaseStatus = async (user) => {
+    if (!user?.email) {
+      console.error('No user email provided for purchase verification');
+      setHasPurchased(false);
+      setError('User email not available');
+      return false;
+    }
+
     try {
       console.log('Starting purchase verification for:', user.email);
       const purchased = await checkPurchaseStatus(user.email);

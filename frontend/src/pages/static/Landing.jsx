@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { Box, Container, Typography, Button, Avatar, alpha } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { auth, provider } from '../../firebase-config';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import axiosInstance from '../../axios-config';
+import { Link } from 'react-router-dom';
 
 const StyledHeader = styled('header')(({ theme }) => ({
   background: 'transparent',
@@ -74,25 +73,18 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Landing = () => {
-  const [user, setUser] = useState(null);
-  const [hasPurchased, setHasPurchased] = useState(false);
   const navigate = useNavigate();
+  const { user, login, logout, hasPurchased, verifyPurchaseStatus } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setUser(user);
-      if (user) {
-        checkPurchaseStatus(user);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user) {
+      verifyPurchaseStatus(user);
+    }
+  }, [user, verifyPurchaseStatus]);
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('Sign in successful:', result.user.email);
+      await login();
     } catch (error) {
       console.error('Error during sign-in:', error);
     }
@@ -100,22 +92,10 @@ const Landing = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await logout();
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
-    }
-  };
-
-  const checkPurchaseStatus = async (user) => {
-    try {
-      const response = await axiosInstance.get('/api/purchases/check-purchase', {
-        params: { email: user.email }
-      });
-      setHasPurchased(response.data.hasPurchased);
-    } catch (error) {
-      console.error('Error checking purchase status:', error);
-      setHasPurchased(false);
     }
   };
 
