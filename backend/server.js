@@ -48,6 +48,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Additional security headers
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
+
 // Request logging middleware with detailed info
 app.use((req, res, next) => {
   const start = Date.now();
