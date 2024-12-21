@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Box, Container, Typography, Button, Avatar, alpha } from '@mui/material';
+import { Box, Container, Typography, Button, Avatar, alpha, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Link } from 'react-router-dom';
 
@@ -74,40 +74,100 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 
 const StripeBuyButton = ({ email }) => {
   const buttonRef = useRef(null);
-  const hasErrored = useRef(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    const handleError = (error) => {
-      // Only show the error once
-      if (!hasErrored.current) {
-        console.warn('Stripe analytics blocked - this is normal with ad blockers:', error);
-        hasErrored.current = true;
+    // Suppress Stripe analytics errors
+    const originalOnError = window.onerror;
+    const originalOnUnhandledRejection = window.onunhandledrejection;
+
+    window.onerror = (message, source, lineno, colno, error) => {
+      if (source?.includes('stripe.com') || message?.includes('stripe.com')) {
+        return true; // Prevent error from bubbling up
       }
+      return originalOnError?.(message, source, lineno, colno, error);
     };
 
-    // Add error handler to window
-    window.addEventListener('unhandledrejection', handleError);
+    window.onunhandledrejection = (event) => {
+      if (event.reason?.message?.includes('stripe.com') ||
+        event.reason?.stack?.includes('stripe.com')) {
+        event.preventDefault();
+        return;
+      }
+      return originalOnUnhandledRejection?.(event);
+    };
+
+    // Check if button loads successfully
+    const checkButtonLoad = setInterval(() => {
+      const button = buttonRef.current?.shadowRoot?.querySelector('button');
+      if (button) {
+        setIsLoaded(true);
+        clearInterval(checkButtonLoad);
+      }
+    }, 500);
+
+    // Cleanup after 10 seconds if button hasn't loaded
+    const timeout = setTimeout(() => {
+      clearInterval(checkButtonLoad);
+      if (!isLoaded) {
+        setHasError(true);
+      }
+    }, 10000);
 
     return () => {
-      window.removeEventListener('unhandledrejection', handleError);
+      window.onerror = originalOnError;
+      window.onunhandledrejection = originalOnUnhandledRejection;
+      clearInterval(checkButtonLoad);
+      clearTimeout(timeout);
     };
-  }, []);
+  }, [isLoaded]);
+
+  if (hasError) {
+    return (
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="body1" color="error" sx={{ mb: 2 }}>
+          Unable to load payment button. Please try:
+        </Typography>
+        <Box component="ul" sx={{ textAlign: 'left', display: 'inline-block' }}>
+          <li>Disabling ad blockers for this site</li>
+          <li>Refreshing the page</li>
+          <li>Using a different browser</li>
+        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => window.location.reload()}
+          sx={{ mt: 2 }}
+        >
+          Refresh Page
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <stripe-buy-button
-      ref={buttonRef}
-      buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
-      publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-      success-url="https://www.caldump.com/success"
-      cancel-url="https://www.caldump.com"
-      customer-email={email}
-      client-reference-id={email}
-      customer-creation="always"
-      customer-update={{
-        address: 'never',
-        name: 'never'
-      }}
-    />
+    <>
+      <stripe-buy-button
+        ref={buttonRef}
+        buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+        publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+        success-url="https://www.caldump.com/success"
+        cancel-url="https://www.caldump.com"
+        customer-email={email}
+        client-reference-id={email}
+        customer-creation="always"
+        customer-update={{
+          address: 'never',
+          name: 'never'
+        }}
+      />
+      {!isLoaded && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
+    </>
   );
 };
 
