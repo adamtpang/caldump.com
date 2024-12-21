@@ -223,7 +223,10 @@ const startServer = async () => {
       console.log(`Time: ${new Date().toISOString()}`);
       console.log(`Port: ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`API URL: http://localhost:${PORT}`);
+      const apiUrl = process.env.NODE_ENV === 'production'
+        ? 'https://api.caldump.com'
+        : `http://localhost:${PORT}`;
+      console.log(`API URL: ${apiUrl}`);
       console.log(`Memory Usage:`);
       logMemoryUsage();
     });
