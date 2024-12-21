@@ -77,9 +77,17 @@ const Landing = () => {
   const { user, login, logout, hasPurchased, verifyPurchaseStatus } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      verifyPurchaseStatus(user);
-    }
+    const checkPurchase = async () => {
+      if (user) {
+        try {
+          await verifyPurchaseStatus(user);
+        } catch (error) {
+          console.error('Failed to verify purchase status:', error);
+        }
+      }
+    };
+
+    checkPurchase();
   }, [user, verifyPurchaseStatus]);
 
   const handleGoogleSignIn = async () => {
