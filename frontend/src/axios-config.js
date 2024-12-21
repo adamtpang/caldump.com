@@ -28,30 +28,9 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log('Making request to:', config.baseURL + config.url);
     return config;
   },
   (error) => Promise.reject(error)
-);
-
-// Add response interceptor for error handling
-axiosInstance.interceptors.response.use(
-  (response) => {
-    console.log('Response received:', {
-      url: response.config.url,
-      status: response.status
-    });
-    return response;
-  },
-  (error) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      baseURL: error.config?.baseURL
-    });
-    return Promise.reject(error);
-  }
 );
 
 export default axiosInstance;
