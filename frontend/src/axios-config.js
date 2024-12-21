@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Default to production URL unless explicitly in development
-const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isDev = window.location.hostname === 'localhost';
 const API_URL = isDev
   ? 'http://localhost:8080'
   : 'https://caldumpcom-production.up.railway.app';
@@ -18,7 +18,7 @@ const axiosInstance = axios.create({
     'Accept': 'application/json'
   },
   timeout: 10000,
-  withCredentials: true // Enable CORS credentials
+  withCredentials: true
 });
 
 // Add request interceptor for auth token and logging
@@ -39,18 +39,11 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Ensure proper CORS headers
-    config.headers['Access-Control-Allow-Origin'] = isDev
-      ? 'http://localhost:5173'
-      : 'https://caldump.com';
-    config.headers['Access-Control-Allow-Credentials'] = 'true';
-
     return config;
   },
   (error) => {
     console.error('Request error:', {
       error: error.message,
-      config: error.config
     });
     return Promise.reject(error);
   }

@@ -16,37 +16,12 @@ console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not Set');
 console.log('Port:', process.env.PORT || 8080);
 
 // CORS configuration - MUST BE FIRST
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://caldump.com',
-      'https://www.caldump.com',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:8080',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:8080',
-      'https://caldump-git-main-adampangelinans-projects.vercel.app'
-    ];
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+app.use(cors({
+  origin: 'http://localhost:5173',
   credentials: true,
-  maxAge: 86400 // 24 hours
-};
-
-app.use(cors(corsOptions));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Additional security headers
 app.use((req, res, next) => {
@@ -115,13 +90,6 @@ app.post('/api/stripe/webhook',
 // Regular JSON parsing with reasonable limits
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Security headers
-app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-});
 
 // MongoDB connection with enhanced retry logic
 const connectDB = async (retries = 5, delay = 5000) => {
