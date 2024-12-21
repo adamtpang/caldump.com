@@ -15,18 +15,31 @@ console.log('Environment:', process.env.NODE_ENV || 'development');
 console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not Set');
 console.log('Port:', process.env.PORT || 8080);
 
-// CORS configuration - MUST BE FIRST
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Additional security headers
+// CORS and security headers - MUST BE FIRST
 app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  const allowedOrigins = [
+    'https://caldump.com',
+    'https://www.caldump.com',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'https://caldump-git-main-adampangelinans-projects.vercel.app'
+  ];
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   next();
 });
 

@@ -39,6 +39,11 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Ensure we're using the correct API URL
+    if (!isDev && config.baseURL.includes('localhost')) {
+      config.baseURL = 'https://caldumpcom-production.up.railway.app';
+    }
+
     return config;
   },
   (error) => {
