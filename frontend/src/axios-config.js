@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Get API URL from environment variables
 const API_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_URL);
 
@@ -17,26 +18,20 @@ const axiosInstance = axios.create({
 // Add request interceptor for auth token and logging
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // Always use the environment-configured API URL
-    config.baseURL = API_URL;
-
-    const fullUrl = config.baseURL + config.url;
-    console.log('Making request to:', fullUrl, {
-      method: config.method,
-      params: config.params
-    });
+    // Never override the baseURL
+    if (config.baseURL !== API_URL) {
+      config.baseURL = API_URL;
+    }
 
     const token = localStorage.getItem('caldump_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log('Making request to:', config.baseURL + config.url);
     return config;
   },
-  (error) => {
-    console.error('Request error:', error.message);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Add response interceptor for error handling
