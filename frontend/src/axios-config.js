@@ -1,12 +1,6 @@
 import axios from 'axios';
 
-// Default to production URL unless explicitly in development
-const isDev = window.location.hostname === 'localhost';
-const API_URL = isDev
-  ? 'http://localhost:8080'
-  : 'https://caldumpcom-production.up.railway.app';
-
-console.log('Environment:', isDev ? 'development' : 'production');
+const API_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_URL);
 
 // Create axios instance with base configuration
@@ -23,7 +17,7 @@ const axiosInstance = axios.create({
 // Add request interceptor for auth token and logging
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // Force the correct API URL
+    // Always use the environment-configured API URL
     config.baseURL = API_URL;
 
     const fullUrl = config.baseURL + config.url;
@@ -55,19 +49,12 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.message === 'Network Error') {
-      console.error('Network or CORS error:', {
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-        message: error.message
-      });
-    } else {
-      console.error('API Error:', {
-        url: error.config?.url,
-        status: error.response?.status,
-        message: error.message
-      });
-    }
+    console.error('API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      baseURL: error.config?.baseURL
+    });
     return Promise.reject(error);
   }
 );
