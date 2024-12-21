@@ -19,7 +19,8 @@ const checkPurchaseStatus = async (email) => {
       try {
         const response = await axiosInstance.get('/api/purchases/check-purchase', {
           params: { email },
-          timeout: 5000 // 5 second timeout
+          timeout: 5000, // 5 second timeout
+          baseURL: API_URL // Ensure we're using the correct API URL
         });
 
         if (response.data && typeof response.data.hasPurchased === 'boolean') {

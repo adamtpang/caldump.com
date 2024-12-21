@@ -24,6 +24,11 @@ const axiosInstance = axios.create({
 // Add request interceptor for auth token and logging
 axiosInstance.interceptors.request.use(
   async (config) => {
+    // Ensure we're using the correct API URL
+    if (config.baseURL.includes('localhost:5000')) {
+      config.baseURL = isDev ? 'http://localhost:8080' : 'https://caldumpcom-production.up.railway.app';
+    }
+
     const fullUrl = config.baseURL + config.url;
     console.log('Making request to:', fullUrl, {
       method: config.method,
@@ -37,11 +42,6 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem('caldump_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Ensure we're using the correct API URL
-    if (!isDev && config.baseURL.includes('localhost')) {
-      config.baseURL = 'https://caldumpcom-production.up.railway.app';
     }
 
     return config;
