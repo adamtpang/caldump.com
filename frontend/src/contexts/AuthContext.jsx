@@ -8,6 +8,7 @@ const AuthContext = createContext();
 const checkPurchaseStatus = async (email) => {
   try {
     console.log('Checking purchase status for:', email);
+    console.log('Using API URL:', API_URL);
 
     const response = await axiosInstance.get('/api/purchases/check-purchase', {
       params: { email },
@@ -26,7 +27,8 @@ const checkPurchaseStatus = async (email) => {
     console.error('Error checking purchase status:', {
       error: error.message,
       email,
-      config: error.config
+      config: error.config,
+      baseURL: error.config?.baseURL
     });
     return false;
   }
