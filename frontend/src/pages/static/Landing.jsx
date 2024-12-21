@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Box, Container, Typography, Button, Avatar, alpha } from '@mui/material';
@@ -71,6 +71,45 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
   minHeight: '100px',
   margin: theme.spacing(4, 0),
 }));
+
+const StripeBuyButton = ({ email }) => {
+  const buttonRef = useRef(null);
+  const hasErrored = useRef(false);
+
+  useEffect(() => {
+    const handleError = (error) => {
+      // Only show the error once
+      if (!hasErrored.current) {
+        console.warn('Stripe analytics blocked - this is normal with ad blockers:', error);
+        hasErrored.current = true;
+      }
+    };
+
+    // Add error handler to window
+    window.addEventListener('unhandledrejection', handleError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleError);
+    };
+  }, []);
+
+  return (
+    <stripe-buy-button
+      ref={buttonRef}
+      buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+      publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+      success-url="https://www.caldump.com/success"
+      cancel-url="https://www.caldump.com"
+      customer-email={email}
+      client-reference-id={email}
+      customer-creation="always"
+      customer-update={{
+        address: 'never',
+        name: 'never'
+      }}
+    />
+  );
+};
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -174,20 +213,7 @@ const Landing = () => {
                 <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
                   Note: Please use the same email ({user.email}) for purchase to activate your license.
                 </Typography>
-                <stripe-buy-button
-                  buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
-                  publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                  success-url="https://www.caldump.com/success"
-                  cancel-url="https://www.caldump.com"
-                  customer-email={user.email}
-                  client-reference-id={user.email}
-                  customer-creation="always"
-                  customer-update={{
-                    address: 'never',
-                    name: 'never'
-                  }}
-                >
-                </stripe-buy-button>
+                <StripeBuyButton email={user.email} />
               </BuyButtonContainer>
             )}
 
