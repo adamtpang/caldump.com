@@ -7,7 +7,6 @@ const API_URL = isDev
   : 'https://caldumpcom-production.up.railway.app';
 
 console.log('Environment:', isDev ? 'development' : 'production');
-console.log('Hostname:', window.location.hostname);
 console.log('Using API URL:', API_URL);
 
 // Create axios instance with base configuration
@@ -24,19 +23,13 @@ const axiosInstance = axios.create({
 // Add request interceptor for auth token and logging
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // Ensure we're using the correct API URL
-    if (config.baseURL.includes('localhost:5000')) {
-      config.baseURL = isDev ? 'http://localhost:8080' : 'https://caldumpcom-production.up.railway.app';
-    }
+    // Force the correct API URL
+    config.baseURL = API_URL;
 
     const fullUrl = config.baseURL + config.url;
     console.log('Making request to:', fullUrl, {
       method: config.method,
-      params: config.params,
-      headers: {
-        ...config.headers,
-        Authorization: config.headers.Authorization ? '[REDACTED]' : 'none'
-      }
+      params: config.params
     });
 
     const token = localStorage.getItem('caldump_token');
@@ -47,9 +40,7 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request error:', {
-      error: error.message,
-    });
+    console.error('Request error:', error.message);
     return Promise.reject(error);
   }
 );
@@ -59,32 +50,24 @@ axiosInstance.interceptors.response.use(
   (response) => {
     console.log('Response received:', {
       url: response.config.url,
-      status: response.status,
-      data: response.data
+      status: response.status
     });
     return response;
   },
   (error) => {
-    // Enhanced error logging
-    const errorDetails = {
-      url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data,
-      stack: error.stack
-    };
-
-    // Network or CORS errors
     if (error.message === 'Network Error') {
       console.error('Network or CORS error:', {
-        ...errorDetails,
-        headers: error.config?.headers
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        message: error.message
       });
     } else {
-      console.error('API Error:', errorDetails);
+      console.error('API Error:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.message
+      });
     }
-
     return Promise.reject(error);
   }
 );

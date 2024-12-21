@@ -8,55 +8,25 @@ const AuthContext = createContext();
 const checkPurchaseStatus = async (email) => {
   try {
     console.log('Checking purchase status for:', email);
-    console.log('Using API URL:', API_URL);
 
-    // Add retry logic for production
-    const maxRetries = 3;
-    let retries = 0;
-    let lastError;
+    const response = await axiosInstance.get('/api/purchases/check-purchase', {
+      params: { email },
+      timeout: 5000,
+      baseURL: API_URL // Force the correct API URL
+    });
 
-    while (retries < maxRetries) {
-      try {
-        const response = await axiosInstance.get('/api/purchases/check-purchase', {
-          params: { email },
-          timeout: 5000, // 5 second timeout
-          baseURL: API_URL // Ensure we're using the correct API URL
-        });
-
-        if (response.data && typeof response.data.hasPurchased === 'boolean') {
-          console.log('Purchase status response:', response.data);
-          return response.data.hasPurchased;
-        } else {
-          console.error('Invalid purchase status response:', response.data);
-          throw new Error('Invalid purchase status response');
-        }
-      } catch (error) {
-        lastError = error;
-        retries++;
-        console.error(`Purchase status check attempt ${retries} failed:`, {
-          error: error.message,
-          config: error.config,
-          response: error.response?.data
-        });
-
-        if (retries < maxRetries) {
-          console.log(`Retry ${retries}/${maxRetries} for purchase status check`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * retries));
-        }
-      }
+    if (response.data && typeof response.data.hasPurchased === 'boolean') {
+      console.log('Purchase status response:', response.data);
+      return response.data.hasPurchased;
     }
 
-    console.error('Final error checking purchase status:', {
-      error: lastError.message,
-      email,
-      config: lastError.config,
-      response: lastError.response?.data
-    });
+    console.error('Invalid purchase status response:', response.data);
     return false;
   } catch (error) {
-    console.error('Error in purchase status check wrapper:', {
+    console.error('Error checking purchase status:', {
       error: error.message,
-      stack: error.stack
+      email,
+      config: error.config
     });
     return false;
   }
