@@ -79,7 +79,7 @@ const StripeBuyButton = ({ email }) => {
     <Button
       variant="contained"
       size="large"
-      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD/prefilled_email/${encodeURIComponent(email)}/success_url/${successUrl}/client_reference_id/${encodeURIComponent(email)}`}
+      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}&success_url=${successUrl}&client_reference_id=${encodeURIComponent(email)}`}
       target="_blank"
       rel="noopener noreferrer"
       sx={{
