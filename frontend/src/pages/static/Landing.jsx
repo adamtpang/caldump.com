@@ -73,11 +73,13 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 }));
 
 const StripeBuyButton = ({ email }) => {
+  const successUrl = encodeURIComponent(`${window.location.origin}/success`);
+
   return (
     <Button
       variant="contained"
       size="large"
-      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}`}
+      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}&success_url=${successUrl}`}
       target="_blank"
       rel="noopener noreferrer"
       sx={{
@@ -91,7 +93,7 @@ const StripeBuyButton = ({ email }) => {
         }
       }}
     >
-      Purchase License - $5
+      Purchase License
     </Button>
   );
 };
