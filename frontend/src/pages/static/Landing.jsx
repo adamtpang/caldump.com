@@ -74,15 +74,25 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 
 const StripeBuyButton = ({ email }) => {
   return (
-    <stripe-buy-button
-      buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
-      publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-      success-url="https://www.caldump.com/success"
-      cancel-url="https://www.caldump.com"
-      customer-email={email}
-      client-reference-id={email}
-      customer-creation="always"
-    />
+    <Button
+      variant="contained"
+      size="large"
+      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      sx={{
+        py: 2,
+        px: 6,
+        fontSize: '1.2rem',
+        backgroundColor: '#635bff',
+        color: 'white',
+        '&:hover': {
+          backgroundColor: '#4b45c6',
+        }
+      }}
+    >
+      Purchase License - $5
+    </Button>
   );
 };
 
