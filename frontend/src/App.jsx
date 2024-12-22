@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
-import theme from './theme';
+import theme from './theme.js';
 import Landing from './pages/static/Landing';
 import Success from './pages/static/Success';
 import Dashboard from './pages/app/Dashboard';
