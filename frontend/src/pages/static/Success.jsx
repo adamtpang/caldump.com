@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Container, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const RETRY_DELAY = 2000; // 2 seconds
 
 const Success = () => {
@@ -15,33 +15,45 @@ const Success = () => {
 
   useEffect(() => {
     const checkPurchaseStatus = async () => {
-      const sessionId = searchParams.get('session_id');
-      const customerEmail = searchParams.get('customer_email');
+      const email = searchParams.get('email');
 
-      console.log('Processing purchase with:', { sessionId, customerEmail, retryCount });
+      console.log('Processing purchase for email:', email);
 
       if (!user) {
         if (retryCount < MAX_RETRIES) {
-          console.log('No user found, retrying in 2 seconds...');
+          console.log(`No user found, retrying in ${RETRY_DELAY}ms... (${retryCount + 1}/${MAX_RETRIES})`);
           setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
           return;
         }
-        setError('Please sign in to verify your purchase.');
+        setError('Please sign in with your Google account to verify your purchase.');
+        return;
+      }
+
+      if (user.email !== email) {
+        setError(`Please sign in with ${email} to verify your purchase.`);
         return;
       }
 
       try {
         console.log('Verifying purchase for user:', user.email);
-        await verifyPurchaseStatus(user, { sessionId, customerEmail });
-        console.log('Purchase verified successfully');
-        navigate('/dashboard');
+        const result = await verifyPurchaseStatus(user);
+        console.log('Purchase verification result:', result);
+
+        if (result?.licenseStatus) {
+          console.log('Purchase verified successfully');
+          navigate('/dashboard');
+        } else if (retryCount < MAX_RETRIES) {
+          console.log('License not found, retrying...');
+          setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
+        } else {
+          setError('Unable to verify your purchase. Please try again or contact support.');
+        }
       } catch (error) {
         console.error('Error verifying purchase:', error);
         if (retryCount < MAX_RETRIES) {
-          console.log('Verification failed, retrying in 2 seconds...');
           setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
         } else {
-          setError('Failed to verify purchase. Please try signing in again or contact support.');
+          setError('Failed to verify purchase. Please try again or contact support.');
         }
       }
     };
