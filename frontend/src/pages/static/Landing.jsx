@@ -74,12 +74,13 @@ const BuyButtonContainer = styled(Box)(({ theme }) => ({
 
 const StripeBuyButton = ({ email }) => {
   const successUrl = encodeURIComponent(`${window.location.origin}/success`);
+  const clientReferenceId = encodeURIComponent(email);
 
   return (
     <Button
       variant="contained"
       size="large"
-      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}&success_url=${successUrl}`}
+      href={`https://buy.stripe.com/eVa4j3dDd7AC18c9AD?prefilled_email=${encodeURIComponent(email)}&success_url=${successUrl}&client_reference_id=${clientReferenceId}`}
       target="_blank"
       rel="noopener noreferrer"
       sx={{
