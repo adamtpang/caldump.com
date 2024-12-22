@@ -100,25 +100,12 @@ const StripeBuyButton = ({ email }) => {
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { user, login, logout, hasPurchased, verifyPurchaseStatus } = useAuth();
-
-  useEffect(() => {
-    const checkPurchase = async () => {
-      if (user) {
-        try {
-          await verifyPurchaseStatus(user);
-        } catch (error) {
-          console.error('Failed to verify purchase status:', error);
-        }
-      }
-    };
-
-    checkPurchase();
-  }, [user, verifyPurchaseStatus]);
+  const { user, login, logout } = useAuth();
 
   const handleGoogleSignIn = async () => {
     try {
       await login();
+      navigate('/dashboard'); // Direct to dashboard after sign in
     } catch (error) {
       console.error('Error during sign-in:', error);
     }
@@ -138,7 +125,7 @@ const Landing = () => {
       <StyledHeader>
         <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Logo to="/">caldump.com</Logo>
-          {user && (
+          {user ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar
                 src={user.photoURL}
@@ -159,6 +146,18 @@ const Landing = () => {
                 Sign Out
               </Button>
             </Box>
+          ) : (
+            <Button
+              onClick={handleGoogleSignIn}
+              variant="contained"
+              color="primary"
+              sx={{
+                borderRadius: '20px',
+                px: 4,
+              }}
+            >
+              Sign In with Google
+            </Button>
           )}
         </Container>
       </StyledHeader>
@@ -173,134 +172,23 @@ const Landing = () => {
               Stop wasting time adding events one by one. Simply paste your tasks,
               set your preferences, and watch as they're automatically scheduled.
             </Typography>
-
             {!user && (
               <Button
                 onClick={handleGoogleSignIn}
                 variant="contained"
                 size="large"
                 sx={{
-                  mb: 4,
                   py: 2,
-                  px: 4,
+                  px: 6,
                   fontSize: '1.2rem',
-                  backgroundColor: 'white',
-                  color: 'black',
-                  '&:hover': {
-                    backgroundColor: '#f0f0f0',
-                  }
                 }}
               >
-                Continue with Google
+                Get Started
               </Button>
             )}
-
-            {user && !hasPurchased && (
-              <BuyButtonContainer>
-                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                  Note: Please use the same email ({user.email}) for purchase to activate your license.
-                </Typography>
-                <StripeBuyButton email={user.email} />
-              </BuyButtonContainer>
-            )}
-
-            {user && hasPurchased && (
-              <Button
-                variant="contained"
-                onClick={() => navigate('/app')}
-                size="large"
-                sx={{
-                  py: 2.5,
-                  px: 8,
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  position: 'relative',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    background: 'linear-gradient(45deg, #ff69b4, #ff9ed2)',
-                    borderRadius: '25px',
-                    zIndex: -1,
-                    animation: 'borderAnimation 4s linear infinite',
-                  },
-                  '@keyframes borderAnimation': {
-                    '0%': {
-                      filter: 'hue-rotate(0deg)',
-                    },
-                    '100%': {
-                      filter: 'hue-rotate(360deg)',
-                    }
-                  }
-                }}
-              >
-                Open Calendar Dashboard
-              </Button>
-            )}
-
-            <Box
-              display="grid"
-              gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }}
-              gap={4}
-              sx={{ mt: 8 }}
-            >
-              <FeatureCard>
-                <FeatureIcon className="fas fa-bolt" />
-                <Typography variant="h6" gutterBottom>Lightning Fast</Typography>
-                <Typography variant="body2">Schedule dozens of events in seconds</Typography>
-              </FeatureCard>
-              <FeatureCard>
-                <FeatureIcon className="fas fa-magic" />
-                <Typography variant="h6" gutterBottom>Smart Scheduling</Typography>
-                <Typography variant="body2">Automatically finds the best time slots</Typography>
-              </FeatureCard>
-              <FeatureCard>
-                <FeatureIcon className="fas fa-calendar-check" />
-                <Typography variant="h6" gutterBottom>Google Calendar Integration</Typography>
-                <Typography variant="body2">Works with your existing calendar</Typography>
-              </FeatureCard>
-            </Box>
           </Box>
         </Container>
       </HeroSection>
-
-      <Box component="footer" py={4} sx={{ textAlign: 'center' }}>
-        <Container maxWidth="lg">
-          <Typography variant="body2" color="text.secondary">
-            © 2024 caldump.com. All rights reserved.
-          </Typography>
-          <Box sx={{ mt: 2 }}>
-            <Link
-              to="/privacy"
-              style={{
-                color: 'inherit',
-                textDecoration: 'none',
-                marginRight: '1rem',
-                opacity: 0.7,
-                '&:hover': { opacity: 1 }
-              }}
-            >
-              Privacy Policy
-            </Link>
-            <a
-              href="https://anchormarianas.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: 'inherit',
-                textDecoration: 'none',
-                opacity: 0.7,
-                '&:hover': { opacity: 1 }
-              }}
-            >
-              anchormarianas.com
-            </a>
-          </Box>
-        </Container>
-      </Box>
     </>
   );
 };

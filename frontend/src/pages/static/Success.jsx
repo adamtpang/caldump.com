@@ -3,103 +3,71 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Container, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
-const MAX_RETRIES = 10;
-const RETRY_DELAY = 2000; // 2 seconds
-
 const Success = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { verifyPurchaseStatus, user, login } = useAuth();
   const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    console.log('Success page mounted');
+    console.log('Current user:', user);
+    console.log('URL params:', Object.fromEntries(searchParams.entries()));
+
     const checkPurchaseStatus = async () => {
-      const email = searchParams.get('email');
-
-      console.log('Processing purchase for email:', email);
-
-      if (!user) {
-        if (retryCount < MAX_RETRIES) {
-          console.log(`No user found, retrying in ${RETRY_DELAY}ms... (${retryCount + 1}/${MAX_RETRIES})`);
-          setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
-          return;
-        }
-        setError('Please sign in with your Google account to verify your purchase.');
-        return;
-      }
-
-      if (user.email !== email) {
-        setError(`Please sign in with ${email} to verify your purchase.`);
-        return;
-      }
-
       try {
-        console.log('Verifying purchase for user:', user.email);
+        console.log('Verifying purchase for user:', user?.email);
         const result = await verifyPurchaseStatus(user);
-        console.log('Purchase verification result:', result);
+        console.log('Verification result:', result);
 
         if (result?.licenseStatus) {
-          console.log('Purchase verified successfully');
+          console.log('License verified, redirecting to dashboard');
           navigate('/dashboard');
-        } else if (retryCount < MAX_RETRIES) {
-          console.log('License not found, retrying...');
-          setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
         } else {
-          setError('Unable to verify your purchase. Please try again or contact support.');
+          console.log('License not found');
+          setError('License verification failed. Please try again or contact support.');
         }
       } catch (error) {
-        console.error('Error verifying purchase:', error);
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(() => setRetryCount(prev => prev + 1), RETRY_DELAY);
-        } else {
-          setError('Failed to verify purchase. Please try again or contact support.');
-        }
+        console.error('Verification error:', error);
+        setError('An error occurred during verification. Please contact support.');
       }
     };
 
-    checkPurchaseStatus();
-  }, [user, verifyPurchaseStatus, navigate, searchParams, retryCount]);
+    if (user) {
+      checkPurchaseStatus();
+    } else {
+      console.log('No user found, showing sign-in prompt');
+    }
+  }, [user, verifyPurchaseStatus, navigate, searchParams]);
 
   const handleSignIn = async () => {
     try {
+      console.log('Attempting sign in');
       await login();
-      setError(null);
-      setRetryCount(0); // Reset retry count to trigger verification again
+      console.log('Sign in successful');
     } catch (error) {
-      console.error('Error signing in:', error);
-      setError('Failed to sign in. Please try again or contact support.');
+      console.error('Sign in error:', error);
+      setError('Failed to sign in. Please try again.');
     }
   };
+
+  if (!user) {
+    return (
+      <Container maxWidth="sm">
+        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 3 }}>
+          <Typography variant="h4">Sign In Required</Typography>
+          <Button variant="contained" onClick={handleSignIn}>Sign In with Google</Button>
+        </Box>
+      </Container>
+    );
+  }
 
   if (error) {
     return (
       <Container maxWidth="sm">
-        <Box
-          sx={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            textAlign: 'center',
-            gap: 4
-          }}
-        >
-          <Alert severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSignIn}
-            sx={{ mt: 2 }}
-          >
-            Sign In with Google
-          </Button>
-          <Typography variant="body2" color="text.secondary">
-            If the problem persists, contact support at support@caldump.com
-          </Typography>
+        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 3 }}>
+          <Alert severity="error">{error}</Alert>
+          <Typography variant="body2">Contact support@caldump.com for assistance</Typography>
         </Box>
       </Container>
     );
@@ -107,25 +75,9 @@ const Success = () => {
 
   return (
     <Container maxWidth="sm">
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          textAlign: 'center',
-          gap: 4
-        }}
-      >
-        <CircularProgress size={60} />
-        <Typography variant="h4" gutterBottom>
-          Processing Your Purchase
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Please wait while we verify your purchase...
-          {retryCount > 0 && ` (Attempt ${retryCount + 1}/${MAX_RETRIES})`}
-        </Typography>
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 3 }}>
+        <CircularProgress />
+        <Typography>Verifying your purchase...</Typography>
       </Box>
     </Container>
   );
