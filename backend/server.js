@@ -23,47 +23,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Configure CORS
-app.use(cors({
-  origin: ['https://caldump.com', 'https://www.caldump.com', 'http://localhost:5173'],
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Body parsing middleware
-app.use(express.json());
-
-// Create checkout session
-app.post('/api/create-checkout-session', async (req, res) => {
-  try {
-    const { userId, email, returnUrl } = req.body;
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: 'price_1QUgojFL7C10dNyG4VKw4oFl',
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: returnUrl,
-      client_reference_id: userId,
-      customer_email: email,
-      metadata: {
-        userId: userId
-      }
-    });
-
-    res.json({ url: session.url });
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
-  }
-});
+app.use(cors());
 
 // Stripe webhook handler
-const webhookHandler = async (req, res) => {
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   console.log('Received webhook with signature:', sig);
 
@@ -80,7 +43,7 @@ const webhookHandler = async (req, res) => {
   // Handle the event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const userId = session.metadata.userId;
+    const userId = session.client_reference_id;
 
     console.log('Processing completed checkout for user:', userId);
 
@@ -103,13 +66,7 @@ const webhookHandler = async (req, res) => {
   }
 
   res.json({ received: true });
-};
-
-// Raw body parser for Stripe webhooks
-app.post('/api/webhook',
-  express.raw({ type: 'application/json' }),
-  webhookHandler
-);
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

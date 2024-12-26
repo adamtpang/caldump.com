@@ -1,15 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Box,
     Container,
     Typography,
-    Button,
     Paper,
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Pricing() {
-    const { redirectToCheckout } = useAuth();
+    const { user } = useAuth();
+
+    useEffect(() => {
+        // Load Stripe Buy Button script
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/buy-button.js';
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
 
     return (
         <Box
@@ -58,20 +69,12 @@ export default function Pricing() {
                         One-time payment for lifetime access
                     </Typography>
 
-                    <Button
-                        variant="contained"
-                        size="large"
-                        onClick={redirectToCheckout}
-                        sx={{
-                            py: 1.5,
-                            px: 4,
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontSize: '1.1rem'
-                        }}
-                    >
-                        Buy Now
-                    </Button>
+                    <stripe-buy-button
+                        buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+                        publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                        client-reference-id={user?.uid}
+                        customer-email={user?.email}
+                    />
                 </Paper>
             </Container>
         </Box>
