@@ -1,8 +1,8 @@
-import express from 'express';
-import cors from 'cors';
-import Stripe from 'stripe';
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+const express = require('express');
+const cors = require('cors');
+const Stripe = require('stripe');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -29,6 +29,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Body parsing middleware
 app.use(express.json());
 
 // Create checkout session
