@@ -1,80 +1,233 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { auth, provider } from '../firebase-config';
-import axiosInstance from '../axios-config';
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+// Initialize Firebase
+console.log('Initializing Firebase with config:', {
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId
+});
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Initialize Firestore with persistent cache
+const db = initializeFirestore(app, {
+  cache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
+const DEFAULT_SETTINGS = {
+  startTime: '06:00',
+  endTime: '18:00'
+};
 
 const AuthContext = createContext();
 
-const checkPurchaseStatus = async (email) => {
-  try {
-    const response = await axiosInstance.get('/api/purchases/check-purchase', {
-      params: { email }
-    });
-    return response.data?.hasPurchased || false;
-  } catch (error) {
-    console.error('Purchase check failed:', error.message);
-    return false;
-  }
-};
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [hasPurchased, setHasPurchased] = useState(false);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [error, setError] = useState(null);
 
-  const verifyPurchaseStatus = async (user) => {
-    if (!user?.email) return false;
-    const purchased = await checkPurchaseStatus(user.email);
-    setHasPurchased(purchased);
-    return purchased;
+  // Load user data from Firestore
+  const loadUserData = async (userId) => {
+    try {
+      console.log('Loading user data for:', userId);
+      const userDoc = await getDoc(doc(db, 'users', userId));
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log('User data loaded:', userData);
+        setSettings(userData.settings || DEFAULT_SETTINGS);
+      } else {
+        // If no data exists, save the defaults
+        console.log('No existing data, saving defaults');
+        await saveUserData({ settings: DEFAULT_SETTINGS });
+        setSettings(DEFAULT_SETTINGS);
+      }
+      setError(null);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      setError('Failed to load user data. Please check your internet connection.');
+    }
+  };
+
+  // Save user data to Firestore
+  const saveUserData = async (data) => {
+    if (!auth.currentUser) return;
+
+    try {
+      console.log('Saving user data:', data);
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        ...data,
+        email: auth.currentUser.email,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+
+      if (data.settings) setSettings(data.settings);
+      setError(null);
+      console.log('Data saved successfully');
+    } catch (error) {
+      console.error('Error saving data:', error);
+      setError('Failed to save data. Please check your internet connection.');
+      throw error;
+    }
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    console.log('Setting up auth state listener...');
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed:', {
+        isLoggedIn: !!user,
+        email: user?.email,
+        uid: user?.uid
+      });
+
       setUser(user);
+
       if (user) {
-        const token = await user.getIdToken(true);
-        localStorage.setItem('caldump_token', token);
-        await verifyPurchaseStatus(user);
+        // Load user data when they sign in
+        await loadUserData(user.uid);
       } else {
-        localStorage.removeItem('caldump_token');
-        setHasPurchased(false);
+        // Reset state on logout
+        setSettings(DEFAULT_SETTINGS);
       }
+
       setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-      localStorage.removeItem('caldump_token');
-    };
+    return unsubscribe;
   }, []);
 
   const login = async () => {
-    const result = await signInWithPopup(auth, provider);
-    await verifyPurchaseStatus(result.user);
-    return result.user;
+    setError(null);
+    console.log('Starting Google sign-in process...');
+
+    const provider = new GoogleAuthProvider();
+
+    // Add all required scopes during initial login
+    provider.addScope('https://www.googleapis.com/auth/calendar.events.freebusy');
+    provider.addScope('https://www.googleapis.com/auth/calendar.events');
+
+    // Store the access token in user metadata
+    provider.setCustomParameters({
+      access_type: 'offline',
+      prompt: 'consent'
+    });
+
+    try {
+      console.log('Opening Google sign-in popup...');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+
+      console.log('Sign-in successful:', {
+        email: result.user.email,
+        uid: result.user.uid,
+        hasAccessToken: !!credential?.accessToken
+      });
+
+      if (!credential?.accessToken) {
+        console.error('No access token received from Google sign-in');
+        throw new Error('No access token received');
+      }
+
+      // Store the access token in Firestore
+      const userData = {
+        settings: DEFAULT_SETTINGS,
+        googleAuth: {
+          accessToken: credential.accessToken,
+          lastUpdated: new Date().toISOString()
+        },
+        email: result.user.email,
+        lastLogin: new Date().toISOString()
+      };
+
+      console.log('Saving user data to Firestore:', {
+        uid: result.user.uid,
+        hasAccessToken: !!userData.googleAuth.accessToken
+      });
+
+      await setDoc(doc(db, 'users', result.user.uid), userData, { merge: true });
+      console.log('User data saved successfully');
+
+      // Verify the token was saved
+      const savedDoc = await getDoc(doc(db, 'users', result.user.uid));
+      const savedData = savedDoc.data();
+      console.log('Verified saved data:', {
+        hasAccessToken: !!savedData?.googleAuth?.accessToken,
+        lastUpdated: savedData?.googleAuth?.lastUpdated
+      });
+
+      // Load user settings
+      setSettings(savedData.settings || DEFAULT_SETTINGS);
+
+      return result;
+    } catch (error) {
+      console.error('Sign-in error:', error);
+      setError('Failed to sign in. Please try again.');
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
-    localStorage.removeItem('caldump_token');
-    setHasPurchased(false);
+    setError(null);
+    console.log('Starting logout process...');
+    try {
+      await signOut(auth);
+      // Reset state on logout
+      setSettings(DEFAULT_SETTINGS);
+      console.log('Logout successful');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Failed to sign out. Please try again.');
+      throw error;
+    }
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    loading,
+    settings,
+    error
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      logout,
-      loading,
-      hasPurchased,
-      verifyPurchaseStatus
-    }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export default AuthContext;

@@ -1,80 +1,64 @@
 import { createTheme } from '@mui/material/styles';
-import { alpha } from '@mui/material';
 
 const theme = createTheme({
     palette: {
-        mode: 'dark',
+        mode: 'light',
         primary: {
-            main: '#ff69b4', // Pink
-            light: '#ff9ed2', // Light pink
-            dark: '#cc5490', // Dark pink
+            main: '#171614',
+            light: '#2c2b29',
+            dark: '#000000',
         },
         secondary: {
-            main: '#ff9ed2', // Light pink
+            main: '#fbc937',
+            light: '#f89313',
+            dark: '#c79500',
         },
         background: {
-            default: '#000000',
-            paper: '#121212',
+            default: '#ffffff',
+            paper: '#fafafa',
         },
         text: {
-            primary: '#ffffff',
-            secondary: 'rgba(255, 255, 255, 0.7)',
+            primary: '#171614',
+            secondary: '#4a4a4a',
         },
     },
     typography: {
-        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
         h1: {
-            fontSize: '3.5rem',
             fontWeight: 700,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.2,
-            marginBottom: '1rem',
-            '@media (max-width:600px)': {
-                fontSize: '2.5rem',
-            },
         },
         h2: {
-            fontSize: '2.5rem',
             fontWeight: 700,
-            letterSpacing: '-0.01em',
-            lineHeight: 1.3,
-            marginBottom: '0.5rem',
-            '@media (max-width:600px)': {
-                fontSize: '2rem',
-            },
+        },
+        h3: {
+            fontWeight: 600,
         },
         h4: {
-            fontSize: '2rem',
             fontWeight: 600,
-            letterSpacing: '-0.01em',
-            marginBottom: '0.5rem',
         },
-        body1: {
-            fontSize: '1.1rem',
-            lineHeight: 1.7,
+        h5: {
+            fontWeight: 500,
         },
-        body2: {
-            fontSize: '1rem',
-            lineHeight: 1.6,
-            color: 'rgba(255, 255, 255, 0.7)',
+        h6: {
+            fontWeight: 500,
         },
+    },
+    shape: {
+        borderRadius: 8,
     },
     components: {
         MuiButton: {
             styleOverrides: {
                 root: {
-                    borderRadius: '25px',
                     textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '1.1rem',
-                    padding: '10px 24px',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                        transform: 'translateY(-2px)',
-                    },
+                    fontWeight: 500,
+                    borderRadius: 8,
                 },
                 contained: {
-                    boxShadow: '0 4px 14px 0 rgba(255, 105, 180, 0.39)',
+                    boxShadow: 'none',
+                    '&:hover': {
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    },
                 },
             },
         },
@@ -82,24 +66,35 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     backgroundImage: 'none',
-                    boxShadow: '0 4px 24px 0 rgba(0, 0, 0, 0.5)',
                 },
             },
         },
-        MuiContainer: {
+        MuiAppBar: {
             styleOverrides: {
                 root: {
-                    '@media (min-width: 1200px)': {
-                        maxWidth: '1200px',
+                    backgroundColor: '#ffffff',
+                    color: '#171614',
+                },
+            },
+        },
+        MuiTextField: {
+            styleOverrides: {
+                root: {
+                    '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                            borderColor: 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&:hover fieldset': {
+                            borderColor: '#171614',
+                        },
+                        '&.Mui-focused fieldset': {
+                            borderColor: '#171614',
+                        },
                     },
                 },
             },
         },
     },
-    shape: {
-        borderRadius: 12,
-    },
-    spacing: 8,
 });
 
 export default theme;
