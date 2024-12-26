@@ -59,6 +59,34 @@ class GoogleCalendarService {
         const token = await this.getToken();
         console.log('Token obtained for finding slots');
 
+        // Ensure we're not scheduling in the past
+        const now = new Date();
+        if (startTime < now) {
+            console.log('Start time is in the past, adjusting to current time');
+            startTime = now;
+        }
+
+        // If the adjusted start time is after end time, move to next day
+        if (startTime >= endTime) {
+            console.log('Start time is after end time, moving to next day');
+            startTime = new Date(endTime);
+            startTime.setDate(startTime.getDate() + 1);
+            startTime.setHours(6, 0, 0, 0); // Reset to 6 AM next day
+
+            endTime = new Date(startTime);
+            endTime.setHours(18, 0, 0, 0); // Set to 6 PM same day
+        }
+
+        // Look ahead for 7 days maximum
+        const maxEndTime = new Date(startTime);
+        maxEndTime.setDate(maxEndTime.getDate() + 7);
+
+        console.log('Searching for slots between:', {
+            start: startTime.toLocaleString(),
+            end: endTime.toLocaleString(),
+            maxEnd: maxEndTime.toLocaleString()
+        });
+
         const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
             method: 'POST',
             headers: {
@@ -67,7 +95,7 @@ class GoogleCalendarService {
             },
             body: JSON.stringify({
                 timeMin: startTime.toISOString(),
-                timeMax: endTime.toISOString(),
+                timeMax: maxEndTime.toISOString(),
                 items: [{ id: 'primary' }],
             }),
         });
@@ -87,26 +115,50 @@ class GoogleCalendarService {
         // Find available slots
         const availableSlots = [];
         let currentTime = new Date(startTime);
+        let currentEndTime = new Date(endTime);
 
-        while (currentTime < endTime) {
-            const slotEnd = new Date(currentTime.getTime() + durationMinutes * 60000);
+        while (availableSlots.length === 0 && currentTime < maxEndTime) {
+            while (currentTime < currentEndTime) {
+                const slotEnd = new Date(currentTime.getTime() + durationMinutes * 60000);
 
-            // Check if this slot overlaps with any busy periods
-            const isSlotAvailable = !busySlots.some(busy => {
-                const busyStart = new Date(busy.start);
-                const busyEnd = new Date(busy.end);
-                return (currentTime < busyEnd && slotEnd > busyStart);
-            });
-
-            if (isSlotAvailable && slotEnd <= endTime) {
-                availableSlots.push({
-                    start: new Date(currentTime),
-                    end: slotEnd,
+                // Check if this slot overlaps with any busy periods
+                const isSlotAvailable = !busySlots.some(busy => {
+                    const busyStart = new Date(busy.start);
+                    const busyEnd = new Date(busy.end);
+                    return (currentTime < busyEnd && slotEnd > busyStart);
                 });
+
+                if (isSlotAvailable && slotEnd <= currentEndTime) {
+                    availableSlots.push({
+                        start: new Date(currentTime),
+                        end: slotEnd,
+                    });
+                }
+
+                currentTime = slotEnd;
             }
 
-            currentTime = slotEnd;
+            // If no slots found today, move to next day
+            if (availableSlots.length === 0) {
+                currentTime = new Date(currentEndTime);
+                currentTime.setDate(currentTime.getDate() + 1);
+                currentTime.setHours(6, 0, 0, 0); // Reset to 6 AM
+
+                currentEndTime = new Date(currentTime);
+                currentEndTime.setHours(18, 0, 0, 0); // Set to 6 PM
+
+                console.log('Moving to next day:', currentTime.toLocaleString());
+            }
         }
+
+        if (availableSlots.length === 0) {
+            throw new Error('No available slots found in the next 7 days');
+        }
+
+        console.log('Found available slots:', availableSlots.map(slot => ({
+            start: slot.start.toLocaleString(),
+            end: slot.end.toLocaleString()
+        })));
 
         return availableSlots;
     }
