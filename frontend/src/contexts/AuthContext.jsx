@@ -14,7 +14,8 @@ import {
   getDoc,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  onSnapshot
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -58,6 +59,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [error, setError] = useState(null);
+  const [hasLicense, setHasLicense] = useState(false);
 
   // Load user data from Firestore
   const loadUserData = async (userId) => {
@@ -69,11 +71,12 @@ export function AuthProvider({ children }) {
         const userData = userDoc.data();
         console.log('User data loaded:', userData);
         setSettings(userData.settings || DEFAULT_SETTINGS);
+        setHasLicense(!!userData.license?.active);
       } else {
-        // If no data exists, save the defaults
         console.log('No existing data, saving defaults');
         await saveUserData({ settings: DEFAULT_SETTINGS });
         setSettings(DEFAULT_SETTINGS);
+        setHasLicense(false);
       }
       setError(null);
     } catch (error) {
@@ -103,6 +106,21 @@ export function AuthProvider({ children }) {
       throw error;
     }
   };
+
+  // Subscribe to license changes
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        const userData = doc.data();
+        setHasLicense(!!userData.license?.active);
+        console.log('License status updated:', !!userData.license?.active);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     console.log('Setting up auth state listener...');
@@ -214,13 +232,47 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const redirectToCheckout = async () => {
+    try {
+      const response = await fetch('https://caldumpcom-production.up.railway.app/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          email: user.email,
+          returnUrl: window.location.origin
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      const { url } = await response.json();
+      if (!url) {
+        throw new Error('No checkout URL received');
+      }
+
+      console.log('Redirecting to checkout:', url);
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error redirecting to checkout:', error);
+      setError('Failed to start checkout process. Please try again.');
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
     loading,
     settings,
-    error
+    error,
+    hasLicense,
+    redirectToCheckout
   };
 
   return (

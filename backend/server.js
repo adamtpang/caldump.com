@@ -1,74 +1,109 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import Stripe from 'stripe';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const port = process.env.PORT || 3001;
 
-// Log environment variables (excluding sensitive data)
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Port:', PORT);
-
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://caldump.com', 'https://www.caldump.com']
-    : 'http://localhost:5173',
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+// Initialize Firebase Admin
+initializeApp({
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  })
 });
-app.use(limiter);
 
-// Body parsing middleware
+const db = getFirestore();
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+app.use(cors());
 app.use(express.json());
-app.use(compression());
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV
-  });
+// Create checkout session
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const { userId, email, returnUrl } = req.body;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: 'price_1QUgojFL7C10dNyG4VKw4oFl',
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: returnUrl,
+      client_reference_id: userId,
+      customer_email: email,
+      metadata: {
+        userId: userId
+      }
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', {
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+// Stripe webhook handler
+const webhookHandler = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  console.log('Received webhook with signature:', sig);
 
-  res.status(err.status || 500).json({
-    error: {
-      message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('Webhook event type:', event.type);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const userId = session.metadata.userId;
+
+    console.log('Processing completed checkout for user:', userId);
+
+    try {
+      // Update user's license in Firestore
+      await db.collection('users').doc(userId).set({
+        license: {
+          active: true,
+          purchaseDate: new Date().toISOString(),
+          stripeSessionId: session.id,
+          lastUpdated: new Date().toISOString()
+        }
+      }, { merge: true });
+
+      console.log('License activated successfully for user:', userId);
+    } catch (error) {
+      console.error('Error updating user license:', error);
+      return res.status(500).send('Error updating user license');
     }
-  });
-});
+  }
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  res.json({ received: true });
+};
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
-});
+// Raw body parser for Stripe webhooks
+app.post('/api/webhook',
+  express.raw({ type: 'application/json' }),
+  webhookHandler
+);
 
-module.exports = server;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
