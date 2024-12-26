@@ -22,7 +22,13 @@ const db = getFirestore();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-app.use(cors());
+// Configure CORS
+app.use(cors({
+  origin: ['https://caldump.com', 'https://www.caldump.com', 'http://localhost:5173'],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // Create checkout session

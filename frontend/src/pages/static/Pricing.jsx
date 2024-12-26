@@ -5,21 +5,8 @@ import {
     Typography,
     Button,
     Paper,
-    List,
-    ListItem,
-    ListItemIcon,
-    ListItemText,
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-
-const features = [
-    'Schedule tasks automatically',
-    'Intelligent time slot allocation',
-    'Google Calendar integration',
-    'Smart scheduling around existing events',
-    'Lifetime access',
-];
 
 export default function Pricing() {
     const { redirectToCheckout } = useAuth();
@@ -58,7 +45,7 @@ export default function Pricing() {
                         variant="h4"
                         sx={{ mb: 1 }}
                     >
-                        $9.99
+                        $10
                     </Typography>
 
                     <Typography
@@ -68,19 +55,8 @@ export default function Pricing() {
                             color: 'text.secondary'
                         }}
                     >
-                        One-time payment
+                        One-time payment for lifetime access
                     </Typography>
-
-                    <List sx={{ mb: 4, textAlign: 'left' }}>
-                        {features.map((feature, index) => (
-                            <ListItem key={index} dense>
-                                <ListItemIcon>
-                                    <CheckCircleIcon color="primary" />
-                                </ListItemIcon>
-                                <ListItemText primary={feature} />
-                            </ListItem>
-                        ))}
-                    </List>
 
                     <Button
                         variant="contained"
