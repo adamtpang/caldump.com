@@ -62,11 +62,8 @@ export default function Landing() {
                             Switch Account
                         </Button>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                        Signed in as {user.email}
-                    </Typography>
-                    <Typography variant="body2" color="primary" sx={{ mt: 1, fontWeight: 'medium' }}>
-                        ⚡ Please use {user.email} to purchase your license
+                    <Typography variant="body2" color="primary" sx={{ mt: 2, fontWeight: 'medium' }}>
+                        Use {user.email} for purchase
                     </Typography>
                 </Box>
             ) : (
