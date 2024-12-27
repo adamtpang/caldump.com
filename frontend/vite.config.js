@@ -9,7 +9,8 @@ export default defineConfig({
     historyApiFallback: true
   },
   preview: {
-    port: 5173
+    port: 5173,
+    historyApiFallback: true
   },
   build: {
     rollupOptions: {
