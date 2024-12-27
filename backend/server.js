@@ -66,43 +66,37 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     const session = event.data.object;
 
     try {
-      // Get the userId from the client_reference_id
-      const userId = session.client_reference_id;
-      if (!userId) {
-        console.error('No userId found in session:', session);
-        response.status(400).send('No userId found in session');
+      const customerEmail = session.customer_details.email.toLowerCase();
+      console.log('Processing webhook for email:', customerEmail);
+
+      // Find user by email
+      const usersSnapshot = await db.collection('users')
+        .where('email', '==', customerEmail)
+        .limit(1)
+        .get();
+
+      if (usersSnapshot.empty) {
+        console.error(`No user found for email: ${customerEmail}`);
+        response.status(400).send(`No user found for email: ${customerEmail}`);
         return;
       }
 
-      console.log('Processing webhook for userId:', userId);
-
-      // First check if the user exists
-      const userRef = db.collection('users').doc(userId);
-      const userDoc = await userRef.get();
-
-      if (!userDoc.exists) {
-        console.error(`User document not found for userId: ${userId}`);
-        response.status(400).send(`User document not found for userId: ${userId}`);
-        return;
-      }
-
+      const userDoc = usersSnapshot.docs[0];
       console.log('Found user document:', {
-        userId,
         email: userDoc.data().email,
         hasExistingLicense: !!userDoc.data().license?.active
       });
 
-      // Update the user's license status directly using their userId
+      // Update the user's license status
       try {
-        await userRef.update({
+        await userDoc.ref.update({
           'license': {
             active: true,
             updatedAt: new Date().toISOString(),
-            stripeSessionId: session.id,
-            purchaseEmail: session.customer_details.email
+            stripeSessionId: session.id
           }
         });
-        console.log(`License activated successfully for userId: ${userId}`);
+        console.log(`License activated successfully for user: ${userDoc.data().email}`);
       } catch (updateError) {
         console.error('Error updating license:', updateError);
         throw updateError;
@@ -120,7 +114,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 
 // Create checkout session endpoint
 app.post('/api/create-checkout-session', express.json(), async (req, res) => {
-  const { userId, email, returnUrl } = req.body;
+  const { email, returnUrl } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -134,8 +128,7 @@ app.post('/api/create-checkout-session', express.json(), async (req, res) => {
       success_url: `${returnUrl}/app`,
       cancel_url: returnUrl,
       automatic_tax: { enabled: true },
-      customer_email: email,
-      client_reference_id: userId
+      customer_email: email
     });
 
     res.json({ url: session.url });

@@ -242,7 +242,6 @@ export function AuthProvider({ children }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.uid,
           email: user.email,
           returnUrl: window.location.origin
         }),
