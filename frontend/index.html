@@ -6,6 +6,9 @@
   <link rel="icon" type="image/png" href="/logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>caldump.com</title>
+  <!-- Preload Stripe script -->
+  <link rel="preload" href="https://js.stripe.com/v3/buy-button.js" as="script">
+  <script async src="https://js.stripe.com/v3/buy-button.js"></script>
   <script>
     // Global error handler for Stripe analytics
     window.addEventListener('error', function (e) {
