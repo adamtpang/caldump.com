@@ -69,23 +69,45 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       // Get the userId from the client_reference_id
       const userId = session.client_reference_id;
       if (!userId) {
-        console.error('No userId found in session');
+        console.error('No userId found in session:', session);
         response.status(400).send('No userId found in session');
         return;
       }
 
       console.log('Processing webhook for userId:', userId);
 
-      // Update the user's license status directly using their userId
-      await db.collection('users').doc(userId).update({
-        'license': {
-          active: true,
-          updatedAt: new Date().toISOString(),
-          stripeSessionId: session.id
-        }
+      // First check if the user exists
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        console.error(`User document not found for userId: ${userId}`);
+        response.status(400).send(`User document not found for userId: ${userId}`);
+        return;
+      }
+
+      console.log('Found user document:', {
+        userId,
+        email: userDoc.data().email,
+        hasExistingLicense: !!userDoc.data().license?.active
       });
 
-      console.log(`License activated for userId: ${userId}`);
+      // Update the user's license status directly using their userId
+      try {
+        await userRef.update({
+          'license': {
+            active: true,
+            updatedAt: new Date().toISOString(),
+            stripeSessionId: session.id,
+            purchaseEmail: session.customer_details.email
+          }
+        });
+        console.log(`License activated successfully for userId: ${userId}`);
+      } catch (updateError) {
+        console.error('Error updating license:', updateError);
+        throw updateError;
+      }
+
       response.json({ received: true });
     } catch (error) {
       console.error('Error processing webhook:', error);
