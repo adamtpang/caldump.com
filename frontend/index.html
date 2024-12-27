@@ -6,7 +6,39 @@
   <link rel="icon" type="image/png" href="/logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>caldump.com</title>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Global error handler for Stripe analytics
+    window.addEventListener('error', function (e) {
+      if (e.target.src && e.target.src.includes('stripe.com')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
+    // Suppress unhandled promise rejections from Stripe
+    window.addEventListener('unhandledrejection', function (e) {
+      if (e.reason && (
+        e.reason.message?.includes('stripe.com') ||
+        e.reason.message?.includes('Failed to fetch')
+      )) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    });
+
+    // Patch fetch to silently handle Stripe analytics
+    const originalFetch = window.fetch;
+    window.fetch = function (url, options) {
+      if (url.toString().includes('stripe.com/b') ||
+        url.toString().includes('stripe.com/api') ||
+        url.toString().includes('errors.stripe.com')) {
+        return Promise.resolve();
+      }
+      return originalFetch.apply(this, arguments);
+    };
+  </script>
 </head>
 
 <body>

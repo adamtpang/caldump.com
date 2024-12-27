@@ -14,49 +14,14 @@ export default function Landing() {
             navigate('/app');
         }
 
-        // Suppress Stripe analytics errors
-        const handleStripeError = (event) => {
-            // Check if error is from Stripe
-            if (
-                event.reason?.message?.includes('stripe.com') ||
-                event.reason?.message?.includes('Failed to fetch') ||
-                event.target?.src?.includes('stripe.com')
-            ) {
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            }
-        };
-
-        // Add error handlers
-        window.addEventListener('unhandledrejection', handleStripeError);
-        window.addEventListener('error', handleStripeError, true);
-
         // Load Stripe script
         const script = document.createElement('script');
         script.src = 'https://js.stripe.com/v3/buy-button.js';
         script.async = true;
-        script.onerror = (e) => {
-            e.preventDefault();
-            console.warn('Stripe script loading was blocked by an ad blocker. This is normal and won\'t affect functionality.');
-        };
-
-        // Patch fetch to suppress Stripe analytics errors
-        const originalFetch = window.fetch;
-        window.fetch = function (url, options) {
-            if (url.toString().includes('stripe.com/b') || url.toString().includes('stripe.com/api')) {
-                return Promise.resolve(); // Silently succeed for analytics calls
-            }
-            return originalFetch.apply(this, arguments);
-        };
-
         document.body.appendChild(script);
 
         return () => {
             document.body.removeChild(script);
-            window.removeEventListener('unhandledrejection', handleStripeError);
-            window.removeEventListener('error', handleStripeError, true);
-            window.fetch = originalFetch;
         };
     }, [user, hasLicense, navigate]);
 
