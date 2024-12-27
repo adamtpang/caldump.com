@@ -10,35 +10,12 @@ export default function Landing() {
     const [stripeLoaded, setStripeLoaded] = useState(false);
 
     useEffect(() => {
-        // If user has license, redirect to app
         if (user && hasLicense) {
             navigate('/app');
         }
 
-        // Check if Stripe is already loaded
-        if (window.customElements.get('stripe-buy-button')) {
-            setStripeLoaded(true);
-            return;
-        }
-
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds total wait time
-
-        // Wait for Stripe to load
-        const checkStripe = setInterval(() => {
-            attempts++;
-            if (window.customElements.get('stripe-buy-button')) {
-                setStripeLoaded(true);
-                clearInterval(checkStripe);
-            } else if (attempts >= maxAttempts) {
-                // Force show after 5 seconds even if not detected
-                setStripeLoaded(true);
-                clearInterval(checkStripe);
-            }
-        }, 100);
-
-        // Clean up interval
-        return () => clearInterval(checkStripe);
+        // Immediately show the button and let it handle its own loading state
+        setStripeLoaded(true);
     }, [user, hasLicense, navigate]);
 
     return (
@@ -52,7 +29,6 @@ export default function Landing() {
             </Typography>
 
             {!user ? (
-                // Not signed in - show sign in button
                 <Button
                     variant="contained"
                     startIcon={<GoogleIcon />}
@@ -62,19 +38,16 @@ export default function Landing() {
                     Sign in with Google
                 </Button>
             ) : !hasLicense ? (
-                // Signed in but no license - show Stripe button
                 <Box sx={{ mt: 4, minHeight: 50, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {!stripeLoaded ? (
-                        <CircularProgress size={30} />
-                    ) : (
+                    <Box sx={{ position: 'relative' }}>
+                        {!stripeLoaded && <CircularProgress size={30} sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />}
                         <stripe-buy-button
                             buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
                             publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
                         />
-                    )}
+                    </Box>
                 </Box>
             ) : (
-                // Has license - show link to app
                 <Button
                     variant="contained"
                     onClick={() => navigate('/app')}
