@@ -65,6 +65,9 @@ export default function Landing() {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                         Signed in as {user.email}
                     </Typography>
+                    <Typography variant="body2" color="primary" sx={{ mt: 1, fontWeight: 'medium' }}>
+                        ⚡ Please use {user.email} to purchase your license
+                    </Typography>
                 </Box>
             ) : (
                 <Button
