@@ -18,10 +18,29 @@ export default function Landing() {
         const script = document.createElement('script');
         script.src = 'https://js.stripe.com/v3/buy-button.js';
         script.async = true;
+
+        // Handle potential errors from ad blockers
+        script.onerror = () => {
+            console.warn('Stripe script loading was blocked. Payment functionality might be affected.');
+        };
+
+        // Suppress Stripe analytics errors
+        window.addEventListener('unhandledrejection', event => {
+            if (event.reason?.message?.includes('stripe.com')) {
+                event.preventDefault();
+            }
+        });
+
         document.body.appendChild(script);
 
         return () => {
             document.body.removeChild(script);
+            // Clean up error handling
+            window.removeEventListener('unhandledrejection', event => {
+                if (event.reason?.message?.includes('stripe.com')) {
+                    event.preventDefault();
+                }
+            });
         };
     }, [user, hasLicense, navigate]);
 
