@@ -1,3 +1,8 @@
+// Load environment variables based on NODE_ENV
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
+});
+
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const express = require('express');
@@ -6,10 +11,19 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const serviceAccount = require('./serviceAccount.json');
 
 const app = express();
-app.use(cors());
+
+// Configure CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173'
+}));
 
 // This is your Stripe CLI webhook secret for testing your endpoint locally.
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+if (!endpointSecret) {
+  console.error('STRIPE_WEBHOOK_SECRET is not set!');
+  process.exit(1);
+}
 
 // Initialize Firebase Admin
 try {
@@ -46,6 +60,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     try {
       // Get the customer's email from the session
       const customerEmail = session.customer_details.email;
+      console.log('Processing webhook for email:', customerEmail);
 
       // Query Firestore to find the user with this email
       const usersRef = db.collection('users');
