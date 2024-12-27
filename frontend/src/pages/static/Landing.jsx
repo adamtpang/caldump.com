@@ -4,26 +4,6 @@ import { Box, Button, Container, Typography, CircularProgress } from '@mui/mater
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleIcon from '@mui/icons-material/Google';
 
-// Error boundary component to catch Stripe-related errors
-class StripeErrorBoundary extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false };
-    }
-
-    static getDerivedStateFromError(error) {
-        return { hasError: false }; // We return false to prevent re-renders
-    }
-
-    componentDidCatch(error, errorInfo) {
-        // Silently catch the error without logging
-    }
-
-    render() {
-        return this.props.children;
-    }
-}
-
 export default function Landing() {
     const { user, hasLicense, login } = useAuth();
     const navigate = useNavigate();
@@ -87,12 +67,10 @@ export default function Landing() {
                     {!stripeLoaded ? (
                         <CircularProgress size={30} />
                     ) : (
-                        <StripeErrorBoundary>
-                            <stripe-buy-button
-                                buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
-                                publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                            />
-                        </StripeErrorBoundary>
+                        <stripe-buy-button
+                            buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+                            publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                        />
                     )}
                 </Box>
             ) : (
