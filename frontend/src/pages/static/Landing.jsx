@@ -1,82 +1,68 @@
-import React from 'react';
-import {
-    Box,
-    Container,
-    Typography,
-    Button,
-    Paper,
-} from '@mui/material';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, Container, Typography } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleIcon from '@mui/icons-material/Google';
 
 export default function Landing() {
-    const { login } = useAuth();
+    const { user, hasLicense, login } = useAuth();
+    const navigate = useNavigate();
 
-    const handleGoogleSignIn = async () => {
-        try {
-            await login();
-        } catch (error) {
-            console.error('Error signing in:', error);
+    useEffect(() => {
+        // If user has license, redirect to app
+        if (user && hasLicense) {
+            navigate('/app');
         }
-    };
+
+        // Load Stripe script
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/buy-button.js';
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, [user, hasLicense, navigate]);
 
     return (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                bgcolor: 'background.default'
-            }}
-        >
-            <Container maxWidth="sm">
-                <Paper
-                    elevation={3}
-                    sx={{
-                        p: 4,
-                        textAlign: 'center',
-                        borderRadius: 2
-                    }}
+        <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
+            <Typography variant="h3" component="h1" gutterBottom>
+                caldump.com
+            </Typography>
+
+            <Typography variant="h5" component="h2" gutterBottom>
+                bulk schedule calendar events
+            </Typography>
+
+            {!user ? (
+                // Not signed in - show sign in button
+                <Button
+                    variant="contained"
+                    startIcon={<GoogleIcon />}
+                    onClick={login}
+                    sx={{ mt: 4 }}
                 >
-                    <Typography
-                        variant="h3"
-                        component="h1"
-                        sx={{
-                            mb: 2,
-                            fontWeight: 'bold',
-                            color: theme => theme.palette.primary.main
-                        }}
-                    >
-                        caldump.com
-                    </Typography>
-
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            mb: 4,
-                            color: 'text.secondary'
-                        }}
-                    >
-                        Dump your tasks, we'll schedule them.
-                    </Typography>
-
-                    <Button
-                        variant="contained"
-                        size="large"
-                        onClick={handleGoogleSignIn}
-                        startIcon={<GoogleIcon />}
-                        sx={{
-                            py: 1.5,
-                            px: 4,
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontSize: '1.1rem'
-                        }}
-                    >
-                        Continue with Google
-                    </Button>
-                </Paper>
-            </Container>
-        </Box>
+                    Sign in with Google
+                </Button>
+            ) : !hasLicense ? (
+                // Signed in but no license - show Stripe button
+                <Box sx={{ mt: 4 }}>
+                    <stripe-buy-button
+                        buy-button-id="buy_btn_1QUgqHFL7C10dNyGlq3U4URR"
+                        publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                    />
+                </Box>
+            ) : (
+                // Has license - show link to app
+                <Button
+                    variant="contained"
+                    onClick={() => navigate('/app')}
+                    sx={{ mt: 4 }}
+                >
+                    Go to App
+                </Button>
+            )}
+        </Container>
     );
 }

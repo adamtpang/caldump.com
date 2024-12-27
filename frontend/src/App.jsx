@@ -1,23 +1,38 @@
 import React from 'react';
 import { ThemeProvider } from '@mui/material';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import theme from './theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Dashboard from './pages/app/Dashboard';
 import Landing from './pages/static/Landing';
-import Pricing from './pages/static/Pricing';
 
-function AppContent() {
+function ProtectedRoute({ children }) {
   const { user, hasLicense } = useAuth();
 
-  if (!user) {
-    return <Landing />;
+  if (!user || !hasLicense) {
+    return <Navigate to="/" />;
   }
 
-  if (!hasLicense) {
-    return <Pricing />;
-  }
+  return children;
+}
 
-  return <Dashboard />;
+function AppContent() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route
+          path="/app"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default function App() {
