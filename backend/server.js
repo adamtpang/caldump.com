@@ -66,21 +66,18 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     const session = event.data.object;
 
     try {
-      // Get the customer's email from the session
-      const customerEmail = session.customer_details.email;
-      console.log('Processing webhook for email:', customerEmail);
-
-      // Query Firestore to find the user with this email
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', customerEmail).get();
-
-      if (snapshot.empty) {
-        throw new Error('No user found with email: ' + customerEmail);
+      // Get the userId from the client_reference_id
+      const userId = session.client_reference_id;
+      if (!userId) {
+        console.error('No userId found in session');
+        response.status(400).send('No userId found in session');
+        return;
       }
 
-      // Update the user's license status
-      const userDoc = snapshot.docs[0];
-      await userDoc.ref.update({
+      console.log('Processing webhook for userId:', userId);
+
+      // Update the user's license status directly using their userId
+      await db.collection('users').doc(userId).update({
         'license': {
           active: true,
           updatedAt: new Date().toISOString(),
@@ -88,7 +85,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         }
       });
 
-      console.log(`License activated for user: ${customerEmail}`);
+      console.log(`License activated for userId: ${userId}`);
       response.json({ received: true });
     } catch (error) {
       console.error('Error processing webhook:', error);
@@ -116,6 +113,7 @@ app.post('/api/create-checkout-session', express.json(), async (req, res) => {
       cancel_url: returnUrl,
       automatic_tax: { enabled: true },
       customer_email: email,
+      client_reference_id: userId
     });
 
     res.json({ url: session.url });

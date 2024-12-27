@@ -15,7 +15,8 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -186,7 +187,7 @@ export function AuthProvider({ children }) {
           accessToken: credential.accessToken,
           lastUpdated: new Date().toISOString()
         },
-        email: result.user.email,
+        email: result.user.email.toLowerCase(),
         lastLogin: new Date().toISOString()
       };
 
@@ -203,7 +204,8 @@ export function AuthProvider({ children }) {
       const savedData = savedDoc.data();
       console.log('Verified saved data:', {
         hasAccessToken: !!savedData?.googleAuth?.accessToken,
-        lastUpdated: savedData?.googleAuth?.lastUpdated
+        lastUpdated: savedData?.googleAuth?.lastUpdated,
+        hasLicense: !!savedData?.license?.active
       });
 
       // Load user settings
