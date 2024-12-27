@@ -1,5 +1,5 @@
-import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 class GoogleCalendarService {
     constructor() {
@@ -11,6 +11,39 @@ class GoogleCalendarService {
     async init() {
         console.log('Initializing Google Calendar service...');
         return Promise.resolve();
+    }
+
+    async refreshToken() {
+        console.log('Refreshing Google token...');
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/calendar.events.freebusy');
+        provider.addScope('https://www.googleapis.com/auth/calendar.events');
+        provider.setCustomParameters({
+            access_type: 'offline',
+            prompt: 'consent'
+        });
+
+        try {
+            const result = await signInWithPopup(this.auth, provider);
+            const credential = GoogleAuthProvider.credentialFromResult(result);
+
+            if (!credential?.accessToken) {
+                throw new Error('No access token received');
+            }
+
+            // Store the new token
+            await setDoc(doc(this.db, 'users', result.user.uid), {
+                googleAuth: {
+                    accessToken: credential.accessToken,
+                    lastUpdated: new Date().toISOString()
+                }
+            }, { merge: true });
+
+            return credential.accessToken;
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            throw error;
+        }
     }
 
     async getToken() {
@@ -39,16 +72,22 @@ class GoogleCalendarService {
             });
 
             const accessToken = userData.googleAuth?.accessToken;
+            const lastUpdated = userData.googleAuth?.lastUpdated;
 
-            if (!accessToken) {
-                console.error('No access token found in user data');
-                throw new Error('No access token found. Please sign in again.');
+            // If token is older than 50 minutes, refresh it
+            if (!accessToken || !lastUpdated ||
+                (new Date().getTime() - new Date(lastUpdated).getTime()) > 50 * 60 * 1000) {
+                console.log('Token expired or missing, refreshing...');
+                return await this.refreshToken();
             }
 
-            console.log('Successfully retrieved access token');
+            console.log('Using existing access token');
             return accessToken;
         } catch (error) {
             console.error('Error getting token:', error);
+            if (error.message.includes('No access token found')) {
+                return await this.refreshToken();
+            }
             throw error;
         }
     }
