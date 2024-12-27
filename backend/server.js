@@ -3,6 +3,14 @@ require('dotenv').config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
 });
 
+// Log environment status
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
+  hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+  frontendUrl: process.env.FRONTEND_URL
+});
+
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const express = require('express');
