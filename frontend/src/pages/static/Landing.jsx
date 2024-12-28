@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Typography, CircularProgress } from '@mui/material';
+import { Box, Button, Container, Typography, CircularProgress, Stack, Link } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleIcon from '@mui/icons-material/Google';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export default function Landing() {
     const { user, hasLicense, login, logout } = useAuth();
@@ -14,8 +15,6 @@ export default function Landing() {
         if (user && hasLicense) {
             navigate('/app');
         }
-
-        // Immediately show the button and let it handle its own loading state
         setStripeLoaded(true);
     }, [user, hasLicense, navigate]);
 
@@ -25,21 +24,38 @@ export default function Landing() {
     };
 
     return (
-        <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
-            <Typography variant="h3" component="h1" gutterBottom>
+        <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8, mb: 4 }}>
+            <Typography variant="h2" component="h1" gutterBottom fontWeight="bold" sx={{ mb: 1 }}>
                 caldump.com
             </Typography>
 
-            <Typography variant="h5" component="h2" gutterBottom>
-                bulk schedule calendar events
+            <Typography variant="h3" component="h2" gutterBottom color="primary" fontWeight="bold" sx={{ mb: 3, fontSize: { xs: '2rem', sm: '2.5rem' } }}>
+                Bulk Schedule Google Calendar Events
             </Typography>
+
+            {/* Key Benefits */}
+            <Box sx={{ mb: 6, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <CheckCircleIcon color="primary" />
+                    <Typography variant="body1">
+                        Schedule multiple events in one go
+                    </Typography>
+                </Box>
+            </Box>
 
             {!user ? (
                 <Button
                     variant="contained"
+                    size="large"
                     startIcon={<GoogleIcon />}
                     onClick={login}
-                    sx={{ mt: 4 }}
+                    sx={{
+                        mt: 2,
+                        py: 2,
+                        px: 6,
+                        fontSize: '1.1rem',
+                        fontWeight: 'bold'
+                    }}
                 >
                     Sign in with Google
                 </Button>
@@ -69,12 +85,25 @@ export default function Landing() {
             ) : (
                 <Button
                     variant="contained"
+                    size="large"
                     onClick={() => navigate('/app')}
-                    sx={{ mt: 4 }}
+                    sx={{
+                        mt: 2,
+                        py: 2,
+                        px: 6,
+                        fontSize: '1.1rem',
+                        fontWeight: 'bold'
+                    }}
                 >
                     Go to App
                 </Button>
             )}
+
+            <Box sx={{ mt: 3, opacity: 0.7 }}>
+                <Link href="https://anchormarianas.com" target="_blank" rel="noopener" color="text.secondary" underline="hover">
+                    anchormarianas.com
+                </Link>
+            </Box>
         </Container>
     );
 }
