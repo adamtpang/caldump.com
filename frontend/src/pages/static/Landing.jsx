@@ -59,6 +59,19 @@ export default function Landing() {
                 </Box>
             </Stack>
 
+            <Box sx={{ mb: 6 }}>
+                <img
+                    src="/caldump-screenshot.png"
+                    alt="caldump.com screenshot"
+                    style={{
+                        width: '100%',
+                        height: 'auto',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                />
+            </Box>
+
             {!user ? (
                 <Button
                     variant="contained"
