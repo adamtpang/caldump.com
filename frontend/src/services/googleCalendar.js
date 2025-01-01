@@ -122,9 +122,10 @@ class GoogleCalendarService {
             endTime.setHours(18, 0, 0, 0); // Set to 6 PM same day
         }
 
-        // Look ahead for 7 days maximum
+        // Look ahead for 20 days maximum (Google Calendar API limit)
         const maxEndTime = new Date(startTime);
-        maxEndTime.setDate(maxEndTime.getDate() + 7);
+        maxEndTime.setDate(maxEndTime.getDate() + 20);
+        maxEndTime.setHours(18, 0, 0, 0); // Set to 6 PM on the last day
 
         console.log('Searching for slots between:', {
             start: startTime.toLocaleString(),
@@ -173,7 +174,7 @@ class GoogleCalendarService {
             return roundedTime;
         };
 
-        // Continue searching until we hit maxEndTime
+        // Continue searching until we hit maxEndTime or find enough slots
         while (currentTime < maxEndTime) {
             // Check slots for current day
             while (currentTime < currentEndTime) {
@@ -211,7 +212,7 @@ class GoogleCalendarService {
         }
 
         if (availableSlots.length === 0) {
-            throw new Error('No available slots found in the next 7 days');
+            throw new Error('No available slots found in the next 20 days');
         }
 
         console.log('Found available slots:', availableSlots.map(slot => ({
@@ -222,19 +223,20 @@ class GoogleCalendarService {
         return availableSlots;
     }
 
-    async createEvents(slots, tasks) {
+    async createEvents(slots, tasks, onProgress) {
         console.log('Creating events...', { slots, tasks });
 
         const token = await this.getToken();
         console.log('Token obtained for creating events');
 
         const user = this.auth.currentUser;
+        const totalEvents = slots.length;
+        let completedEvents = 0;
 
-        const createPromises = slots.map((slot, index) => {
-            if (!tasks[index]) return null;
-
+        // Helper function to create a single event with retry logic
+        const createSingleEvent = async (slot, task, retryCount = 0) => {
             const event = {
-                summary: tasks[index],
+                summary: task,
                 start: {
                     dateTime: slot.start.toISOString(),
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -248,24 +250,69 @@ class GoogleCalendarService {
 
             console.log('Creating event:', event);
 
-            return fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(event),
-            }).then(async response => {
+            try {
+                const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(event),
+                });
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('Failed to create event:', errorText);
+
+                    // If rate limited and haven't retried too many times, wait and retry
+                    if (response.status === 403 && retryCount < 3) {
+                        console.log(`Rate limited, waiting before retry ${retryCount + 1}...`);
+                        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Exponential backoff
+                        return createSingleEvent(slot, task, retryCount + 1);
+                    }
+
                     throw new Error('Failed to create event');
                 }
-                return response.json();
-            });
-        });
 
-        await Promise.all(createPromises.filter(Boolean));
+                return response.json();
+            } catch (error) {
+                console.error('Error creating event:', error);
+                throw error;
+            }
+        };
+
+        const startTime = Date.now();
+
+        // Create events sequentially with delay between each
+        for (let i = 0; i < slots.length; i++) {
+            if (!tasks[i]) continue;
+
+            if (i > 0) {
+                // Add delay between event creations
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            await createSingleEvent(slots[i], tasks[i]);
+            completedEvents++;
+
+            // Calculate progress and time estimates
+            const progress = completedEvents / totalEvents;
+            const elapsedTime = Date.now() - startTime;
+            const estimatedTotalTime = elapsedTime / progress;
+            const remainingTime = estimatedTotalTime - elapsedTime;
+            const remainingSeconds = Math.ceil(remainingTime / 1000);
+
+            // Call progress callback if provided
+            if (onProgress) {
+                onProgress({
+                    completed: completedEvents,
+                    total: totalEvents,
+                    progress: progress,
+                    remainingSeconds: remainingSeconds
+                });
+            }
+        }
+
         console.log('All events created successfully');
     }
 }

@@ -28,7 +28,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
 export default function Dashboard() {
     const { user, settings, logout } = useAuth();
     const [tasks, setTasks] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState('');
     const [error, setError] = useState(null);
 
     const handleLogout = async () => {
@@ -68,28 +68,35 @@ export default function Dashboard() {
             endTime.setHours(parseInt(endHours), parseInt(endMinutes));
 
             // Find available slots
-            const availableSlots = await googleCalendarService.findAvailableSlots(
+            let availableSlots = await googleCalendarService.findAvailableSlots(
                 startTime,
                 endTime,
                 30 // 30 minutes per task
             );
 
+            // Keep only the slots we need
+            availableSlots = availableSlots.slice(0, taskList.length);
+
+            // Check if we have enough slots after getting them all
             if (availableSlots.length < taskList.length) {
-                throw new Error('Not enough available time slots for all tasks');
+                throw new Error(`Could only find ${availableSlots.length} available slots for ${taskList.length} tasks. Try a different time range or reduce the number of tasks.`);
             }
 
             // Create events for each task
             await googleCalendarService.createEvents(
-                availableSlots.slice(0, taskList.length),
-                taskList
+                availableSlots,
+                taskList,
+                (progress) => {
+                    setLoading(`Scheduling events (${progress.completed}/${progress.total})... ${progress.remainingSeconds} seconds remaining`);
+                }
             );
 
             // Clear tasks after successful scheduling
             setTasks('');
+            setLoading(false);
         } catch (error) {
             console.error('Error scheduling tasks:', error);
             setError(error.message);
-        } finally {
             setLoading(false);
         }
     };
@@ -97,43 +104,46 @@ export default function Dashboard() {
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <StyledAppBar position="sticky">
-                <Toolbar>
-                    <Typography
-                        variant="h6"
-                        component="div"
-                        sx={{
-                            flexGrow: 1,
-                            fontWeight: 'bold',
-                            color: theme => theme.palette.primary.main,
-                        }}
-                    >
-                        caldump.com
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar
-                            src={user?.photoURL}
-                            alt={user?.displayName}
+                <Container maxWidth="sm" disableGutters>
+                    <Toolbar sx={{ px: '24px !important' }}>
+                        <Typography
+                            variant="h6"
+                            component="div"
                             sx={{
-                                width: 40,
-                                height: 40,
-                                border: '2px solid white',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                            }}
-                        />
-                        <IconButton
-                            onClick={handleLogout}
-                            sx={{
+                                flexGrow: 1,
+                                fontWeight: 'bold',
                                 color: theme => theme.palette.primary.main,
-                                '&:hover': {
-                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                                }
+                                ml: -1
                             }}
-                            title="Sign out"
                         >
-                            <LogoutIcon />
-                        </IconButton>
-                    </Box>
-                </Toolbar>
+                            caldump.com
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: -1 }}>
+                            <Avatar
+                                src={user?.photoURL}
+                                alt={user?.displayName}
+                                sx={{
+                                    width: 36,
+                                    height: 36,
+                                    border: '2px solid white',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                }}
+                            />
+                            <IconButton
+                                onClick={handleLogout}
+                                sx={{
+                                    color: theme => theme.palette.primary.main,
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                    }
+                                }}
+                                title="Sign out"
+                            >
+                                <LogoutIcon />
+                            </IconButton>
+                        </Box>
+                    </Toolbar>
+                </Container>
             </StyledAppBar>
 
             <Container maxWidth="sm" sx={{ mt: 4 }}>
@@ -150,7 +160,7 @@ Call with client
 Prepare presentation`}
                         value={tasks}
                         onChange={(e) => setTasks(e.target.value)}
-                        disabled={loading}
+                        disabled={!!loading}
                         sx={{ mb: 3 }}
                     />
 
@@ -164,10 +174,10 @@ Prepare presentation`}
                         fullWidth
                         variant="contained"
                         onClick={handleSchedule}
-                        disabled={loading || !tasks.trim()}
+                        disabled={!!loading || !tasks.trim()}
                         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <EventIcon />}
                     >
-                        {loading ? 'Scheduling...' : 'Schedule Events'}
+                        {loading || 'Schedule Events'}
                     </Button>
                 </Paper>
             </Container>
