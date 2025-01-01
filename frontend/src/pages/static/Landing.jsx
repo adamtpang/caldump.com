@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Typography, CircularProgress, Stack, Link } from '@mui/material';
+import { Box, Button, Container, Typography, CircularProgress, Stack } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleIcon from '@mui/icons-material/Google';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
@@ -98,12 +98,6 @@ export default function Landing() {
                     Go to App
                 </Button>
             )}
-
-            <Box sx={{ mt: 3, opacity: 0.7 }}>
-                <Link href="https://anchormarianas.com" target="_blank" rel="noopener" color="text.secondary" underline="hover">
-                    anchormarianas.com
-                </Link>
-            </Box>
         </Container>
     );
 }

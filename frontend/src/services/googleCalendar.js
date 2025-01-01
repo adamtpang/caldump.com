@@ -103,6 +103,12 @@ class GoogleCalendarService {
         if (startTime < now) {
             console.log('Start time is in the past, adjusting to current time');
             startTime = now;
+            // Round up to next 30-minute mark
+            const minutes = startTime.getMinutes();
+            const roundedMinutes = Math.ceil(minutes / 30) * 30;
+            startTime.setMinutes(roundedMinutes);
+            startTime.setSeconds(0);
+            startTime.setMilliseconds(0);
         }
 
         // If the adjusted start time is after end time, move to next day
@@ -156,8 +162,23 @@ class GoogleCalendarService {
         let currentTime = new Date(startTime);
         let currentEndTime = new Date(endTime);
 
-        while (availableSlots.length === 0 && currentTime < maxEndTime) {
+        // Helper function to round time to nearest 30-minute mark
+        const roundToNearestSlot = (time) => {
+            const roundedTime = new Date(time);
+            const minutes = roundedTime.getMinutes();
+            const roundedMinutes = Math.round(minutes / 30) * 30;
+            roundedTime.setMinutes(roundedMinutes);
+            roundedTime.setSeconds(0);
+            roundedTime.setMilliseconds(0);
+            return roundedTime;
+        };
+
+        // Continue searching until we hit maxEndTime
+        while (currentTime < maxEndTime) {
+            // Check slots for current day
             while (currentTime < currentEndTime) {
+                // Round current time to nearest 30-minute mark
+                currentTime = roundToNearestSlot(currentTime);
                 const slotEnd = new Date(currentTime.getTime() + durationMinutes * 60000);
 
                 // Check if this slot overlaps with any busy periods
@@ -174,20 +195,19 @@ class GoogleCalendarService {
                     });
                 }
 
-                currentTime = slotEnd;
+                // Move to next 30-minute mark
+                currentTime.setMinutes(currentTime.getMinutes() + 30);
             }
 
-            // If no slots found today, move to next day
-            if (availableSlots.length === 0) {
-                currentTime = new Date(currentEndTime);
-                currentTime.setDate(currentTime.getDate() + 1);
-                currentTime.setHours(6, 0, 0, 0); // Reset to 6 AM
+            // Move to next day
+            currentTime = new Date(currentEndTime);
+            currentTime.setDate(currentTime.getDate() + 1);
+            currentTime.setHours(6, 0, 0, 0); // Reset to 6 AM
 
-                currentEndTime = new Date(currentTime);
-                currentEndTime.setHours(18, 0, 0, 0); // Set to 6 PM
+            currentEndTime = new Date(currentTime);
+            currentEndTime.setHours(18, 0, 0, 0); // Set to 6 PM
 
-                console.log('Moving to next day:', currentTime.toLocaleString());
-            }
+            console.log('Moving to next day:', currentTime.toLocaleString());
         }
 
         if (availableSlots.length === 0) {

@@ -12,8 +12,7 @@ import {
     Toolbar,
     Avatar,
     IconButton,
-    styled,
-    Link
+    styled
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import { googleCalendarService } from '../../services/googleCalendar';
@@ -172,12 +171,6 @@ Prepare presentation`}
                     </Button>
                 </Paper>
             </Container>
-
-            <Box sx={{ mt: 3, opacity: 0.7, textAlign: 'center' }}>
-                <Link href="https://anchormarianas.com" target="_blank" rel="noopener" color="text.secondary" underline="hover">
-                    anchormarianas.com
-                </Link>
-            </Box>
         </Box>
     );
 }
