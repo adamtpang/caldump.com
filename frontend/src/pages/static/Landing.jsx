@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Typography, CircularProgress, Stack } from '@mui/material';
+import { Box, Button, Container, Typography, CircularProgress, Stack, Link } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleIcon from '@mui/icons-material/Google';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export default function Landing() {
     const { user, hasLicense, login, logout } = useAuth();
@@ -29,19 +28,36 @@ export default function Landing() {
                 caldump.com
             </Typography>
 
-            <Typography variant="h3" component="h2" gutterBottom color="primary" fontWeight="bold" sx={{ mb: 3, fontSize: { xs: '2rem', sm: '2.5rem' } }}>
-                Bulk Schedule Google Calendar Events
-            </Typography>
-
-            {/* Key Benefits */}
-            <Box sx={{ mb: 6, display: 'flex', justifyContent: 'center' }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <CheckCircleIcon color="primary" />
+            <Stack spacing={4} sx={{ mb: 6, textAlign: 'left' }}>
+                <Box>
+                    <Typography variant="h6" gutterBottom color="primary">
+                        The Problem
+                    </Typography>
                     <Typography variant="body1">
-                        Schedule multiple events in one go
+                        Creating multiple calendar events is tedious. You have to enter each event one by one, wasting time on repetitive clicks.
                     </Typography>
                 </Box>
-            </Box>
+
+                <Box>
+                    <Typography variant="h6" gutterBottom color="primary">
+                        The Solution
+                    </Typography>
+                    <Typography variant="body1">
+                        Paste a list of tasks. They'll be automatically scheduled in your available time slots.
+                    </Typography>
+                </Box>
+
+                <Box>
+                    <Typography variant="h6" gutterBottom color="primary">
+                        How It Works
+                    </Typography>
+                    <Typography component="div">
+                        1. Sign in with Google Calendar<br />
+                        2. Enter your tasks (one per line)<br />
+                        3. Click schedule - done
+                    </Typography>
+                </Box>
+            </Stack>
 
             {!user ? (
                 <Button
@@ -98,6 +114,12 @@ export default function Landing() {
                     Go to App
                 </Button>
             )}
+
+            <Box sx={{ mt: 4, opacity: 0.7 }}>
+                <Link href="https://adampang.com" target="_blank" rel="noopener" color="text.secondary" underline="hover">
+                    by adampang.com
+                </Link>
+            </Box>
         </Container>
     );
 }
